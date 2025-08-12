@@ -1,0 +1,106 @@
+{
+  "detectSettings": {
+    "camera_internal": true,
+    "camera_id": 0,
+    "camera_width": 640,
+    "camera_height": 640,
+    "detect_interval": 250,
+    "rectangle_filter": 3,
+    "score_filter_len_high": 0.66,
+    "score_filter_len_low": 0.36,
+    "score_filter_phone_high": 0.93,
+    "score_filter_phone_low": 0.83,
+    "score_filter_face": 0.36,
+    "label_filter_len": 1,
+    "label_filter_phone": 2,
+    "label_filter_face": 0,
+    "alert_string_phone": "禁止拍照",
+    "alert_phone_enable": false,
+    "alert_phone_window_enable": false,
+    "alert_phone_screen_enable": false,
+    "alert_phone_camera_enable": false,
+    "alert_suspect_enable": false,
+    "alert_suspect_screen_enable": false,
+    "alert_suspect_camera_enable": false,
+    "alert_string_peep": "存在偷窥风险, 请检测周边",
+    "alert_peep_enable": false,
+    "alert_peep_window_enable": false,
+    "alert_string_nobody": "无人办公",
+    "alert_string_occlude": "摄像头遮挡",
+    "alert_nobody_enable": true,
+    "alert_occlude_enable": true,
+    "alert_nobody_window_enable": true,
+    "alert_occlude_window_enable": true,
+    "alert_nobody_lock_enable": false,
+    "alert_nobody_lock_close_camera_enable": false,
+    "alert_string_noconnect": "摄像头异常, 请检查线束连接",
+    "alert_noconnect_enable": true,
+    "alert_noconnect_window_enable": true,
+    "alert_font": "微软雅黑",
+    "alert_font_size": 60,
+    "alert_show_interval": 500,
+    "alert_show_type": 0
+  },
+  "alertWindowSettings": {
+    "alert_string_phone": "禁止拍照",
+    "alert_string_peep": "存在偷窥风险, 请检测周边",
+    "alert_string_nobody": "无人办公",
+    "alert_string_occlude": "摄像头遮挡",
+    "alert_string_noconnect": "摄像头异常, 请检查线束连接",
+    "alert_font": "微软雅黑",
+    "alert_font_size": 60
+  },
+  "inferenceSettings": {
+    "score_filter_len_high": 0.66,
+    "score_filter_len_low": 0.36,
+    "score_filter_phone_high": 0.93,
+    "score_filter_phone_low": 0.83,
+    "score_filter_face": 0.36,
+    "label_filter_len": 1,
+    "label_filter_phone": 2,
+    "label_filter_face": 0,
+    "run_device": "CPU"
+  },
+  "imageProcessSettings": {
+    "detect_interval": 250,
+    "alert_show_interval": 500,
+    "camera_id": 0,
+    "camera_width": 640,
+    "camera_height": 640,
+    "brightness_threshold_low": 30.01,
+    "brightness_threshold_high": 150.01,
+
+    "alert_phone_enable": true,
+    "alert_phone_window_enable": true,
+    "alert_phone_screen_enable": true,
+    "alert_phone_camera_enable": true,
+
+    "alert_suspect_enable": false,
+    "alert_suspect_screen_enable": false,
+    "alert_suspect_camera_enable": false,
+
+    "alert_peep_enable": false,
+    "alert_peep_window_enable": false,
+
+    "alert_nobody_enable": true,
+    "alert_nobody_window_enable": true,
+    "alert_nobody_lock_enable": true,
+
+    "alert_occlude_enable": true,
+    "alert_occlude_window_enable": true,
+
+    "alert_noconnect_enable": false,
+    "alert_noconnect_window_enable": false
+  },
+  "logSettings": {
+    "log_enable": true,
+    "log_level": 1
+  },
+  "uploadSettings": {
+    "upload_interval": 60000
+  },
+  "testSettings": {
+    "test_source_preview": false,
+    "test_video_path": ""
+  }
+}

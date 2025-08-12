@@ -1,0 +1,660 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4D1E83C62E488D29009811B2 /* PADetectManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1E83C32E488D29009811B2 /* PADetectManager.swift */; };
+		4D1E83C72E488D29009811B2 /* PADetectApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1E83C02E488D29009811B2 /* PADetectApp.swift */; };
+		4D1E83C82E488D29009811B2 /* PADetectBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4D1E83C22E488D29009811B2 /* PADetectBridge.mm */; };
+		4D1E83C92E488D29009811B2 /* PADetectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1E83C42E488D29009811B2 /* PADetectView.swift */; };
+		4D1E83CD2E488F00009811B2 /* mnn_model in Resources */ = {isa = PBXBuildFile; fileRef = 4D1E83CE2E488F00009811B2 /* mnn_model */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4D9CFABF2E487499005D942A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D9CFAA92E487497005D942A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4D9CFAB02E487497005D942A;
+			remoteInfo = PADetect;
+		};
+		4D9CFAC92E487499005D942A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D9CFAA92E487497005D942A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4D9CFAB02E487497005D942A;
+			remoteInfo = PADetect;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		4D1E83BF2E488D29009811B2 /* PADetect-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PADetect-Bridging-Header.h"; sourceTree = "<group>"; };
+		4D1E83C02E488D29009811B2 /* PADetectApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PADetectApp.swift; sourceTree = "<group>"; };
+		4D1E83C12E488D29009811B2 /* PADetectBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PADetectBridge.h; sourceTree = "<group>"; };
+		4D1E83C22E488D29009811B2 /* PADetectBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = PADetectBridge.mm; sourceTree = "<group>"; };
+		4D1E83C32E488D29009811B2 /* PADetectManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PADetectManager.swift; sourceTree = "<group>"; };
+		4D1E83C42E488D29009811B2 /* PADetectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PADetectView.swift; sourceTree = "<group>"; };
+		4D1E83CA2E488D2C009811B2 /* PADetect-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PADetect-Bridging-Header.h"; sourceTree = "<group>"; };
+		4D1E83CE2E488F00009811B2 /* mnn_model */ = {isa = PBXFileReference; lastKnownFileType = folder; path = mnn_model; sourceTree = "<group>"; };
+		4D9CFAB12E487497005D942A /* PADetect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PADetect.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D9CFABE2E487499005D942A /* PADetectTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PADetectTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D9CFAC82E487499005D942A /* PADetectUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PADetectUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4D9CFAC12E487499005D942A /* PADetectTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PADetectTests;
+			sourceTree = "<group>";
+		};
+		4D9CFACB2E487499005D942A /* PADetectUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PADetectUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4D9CFAAE2E487497005D942A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D9CFABB2E487499005D942A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D9CFAC52E487499005D942A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4D9CFAA82E487497005D942A = {
+			isa = PBXGroup;
+			children = (
+				4D9CFAAA2E487497005D942A /* PADetect */,
+				4D1E83CE2E488F00009811B2 /* mnn_model */,
+				4D9CFAC12E487499005D942A /* PADetectTests */,
+				4D9CFACB2E487499005D942A /* PADetectUITests */,
+				4D9CFAB22E487497005D942A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4D9CFAAA2E487497005D942A /* PADetect */ = {
+			isa = PBXGroup;
+			children = (
+				4D1E83BF2E488D29009811B2 /* PADetect-Bridging-Header.h */,
+				4D1E83C02E488D29009811B2 /* PADetectApp.swift */,
+				4D1E83C12E488D29009811B2 /* PADetectBridge.h */,
+				4D1E83C22E488D29009811B2 /* PADetectBridge.mm */,
+				4D1E83C32E488D29009811B2 /* PADetectManager.swift */,
+				4D1E83C42E488D29009811B2 /* PADetectView.swift */,
+				4D1E83CA2E488D2C009811B2 /* PADetect-Bridging-Header.h */,
+			);
+			path = PADetect;
+			sourceTree = "<group>";
+		};
+		4D9CFAB22E487497005D942A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4D9CFAB12E487497005D942A /* PADetect.app */,
+				4D9CFABE2E487499005D942A /* PADetectTests.xctest */,
+				4D9CFAC82E487499005D942A /* PADetectUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4D9CFAB02E487497005D942A /* PADetect */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D9CFAD22E487499005D942A /* Build configuration list for PBXNativeTarget "PADetect" */;
+			buildPhases = (
+				4D9CFAAD2E487497005D942A /* Sources */,
+				4D9CFAAE2E487497005D942A /* Frameworks */,
+				4D9CFAAF2E487497005D942A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PADetect;
+			packageProductDependencies = (
+			);
+			productName = PADetect;
+			productReference = 4D9CFAB12E487497005D942A /* PADetect.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4D9CFABD2E487499005D942A /* PADetectTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D9CFAD52E487499005D942A /* Build configuration list for PBXNativeTarget "PADetectTests" */;
+			buildPhases = (
+				4D9CFABA2E487499005D942A /* Sources */,
+				4D9CFABB2E487499005D942A /* Frameworks */,
+				4D9CFABC2E487499005D942A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4D9CFAC02E487499005D942A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4D9CFAC12E487499005D942A /* PADetectTests */,
+			);
+			name = PADetectTests;
+			packageProductDependencies = (
+			);
+			productName = PADetectTests;
+			productReference = 4D9CFABE2E487499005D942A /* PADetectTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4D9CFAC72E487499005D942A /* PADetectUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D9CFAD82E487499005D942A /* Build configuration list for PBXNativeTarget "PADetectUITests" */;
+			buildPhases = (
+				4D9CFAC42E487499005D942A /* Sources */,
+				4D9CFAC52E487499005D942A /* Frameworks */,
+				4D9CFAC62E487499005D942A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4D9CFACA2E487499005D942A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4D9CFACB2E487499005D942A /* PADetectUITests */,
+			);
+			name = PADetectUITests;
+			packageProductDependencies = (
+			);
+			productName = PADetectUITests;
+			productReference = 4D9CFAC82E487499005D942A /* PADetectUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4D9CFAA92E487497005D942A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					4D9CFAB02E487497005D942A = {
+						CreatedOnToolsVersion = 16.4;
+						LastSwiftMigration = 1640;
+					};
+					4D9CFABD2E487499005D942A = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 4D9CFAB02E487497005D942A;
+					};
+					4D9CFAC72E487499005D942A = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 4D9CFAB02E487497005D942A;
+					};
+				};
+			};
+			buildConfigurationList = 4D9CFAAC2E487497005D942A /* Build configuration list for PBXProject "PADetect" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4D9CFAA82E487497005D942A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4D9CFAB22E487497005D942A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4D9CFAB02E487497005D942A /* PADetect */,
+				4D9CFABD2E487499005D942A /* PADetectTests */,
+				4D9CFAC72E487499005D942A /* PADetectUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4D9CFAAF2E487497005D942A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D1E83CD2E488F00009811B2 /* mnn_model in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D9CFABC2E487499005D942A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D9CFAC62E487499005D942A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4D9CFAAD2E487497005D942A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D1E83C62E488D29009811B2 /* PADetectManager.swift in Sources */,
+				4D1E83C72E488D29009811B2 /* PADetectApp.swift in Sources */,
+				4D1E83C82E488D29009811B2 /* PADetectBridge.mm in Sources */,
+				4D1E83C92E488D29009811B2 /* PADetectView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D9CFABA2E487499005D942A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D9CFAC42E487499005D942A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4D9CFAC02E487499005D942A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4D9CFAB02E487497005D942A /* PADetect */;
+			targetProxy = 4D9CFABF2E487499005D942A /* PBXContainerItemProxy */;
+		};
+		4D9CFACA2E487499005D942A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4D9CFAB02E487497005D942A /* PADetect */;
+			targetProxy = 4D9CFAC92E487499005D942A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4D9CFAD02E487499005D942A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/opt/opencv/include/opencv4,
+					/usr/local/include,
+					./PADetect,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/opt/opencv/lib,
+					/usr/local/lib,
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				ARCHS = x86_64;
+				OTHER_LDFLAGS = (
+					"-lc++",
+					"-lopencv_core",
+					"-lopencv_imgproc",
+					"-lopencv_imgcodecs",
+					"-lopencv_highgui",
+					"-lopencv_video",
+					"-lopencv_videoio",
+					"-lopencv_objdetect",
+					"-lopencv_features2d",
+					"-lopencv_calib3d",
+					"-lopencv_dnn",
+					"-lcurl",
+					"-ljsoncpp",
+					"-lspdlog",
+					"-lfmt",
+					"-lssl",
+					"-lcrypto",
+					"-F$(PROJECT_DIR)/mnn_3.2.0/Static",
+					"-framework",
+					"MNN",
+					"$(PROJECT_DIR)/libPADetectCore.a",
+				);
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OBJC_BRIDGING_HEADER = "PADetect/PADetect-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		4D9CFAD12E487499005D942A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/opt/opencv/include/opencv4,
+					/usr/local/include,
+					./PADetect,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/opt/opencv/lib,
+					/usr/local/lib,
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				ARCHS = x86_64;
+				OTHER_LDFLAGS = (
+					"-lc++",
+					"-lopencv_core",
+					"-lopencv_imgproc",
+					"-lopencv_imgcodecs",
+					"-lopencv_highgui",
+					"-lopencv_video",
+					"-lopencv_videoio",
+					"-lopencv_objdetect",
+					"-lopencv_features2d",
+					"-lopencv_calib3d",
+					"-lopencv_dnn",
+					"-lcurl",
+					"-ljsoncpp",
+					"-lspdlog",
+					"-lfmt",
+					"-lssl",
+					"-lcrypto",
+					"-F$(PROJECT_DIR)/mnn_3.2.0/Static",
+					"-framework",
+					"MNN",
+					"$(PROJECT_DIR)/libPADetectCore.a",
+				);
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_BRIDGING_HEADER = "PADetect/PADetect-Bridging-Header.h";
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = "PADetect-Swift.h";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		4D9CFAD32E487499005D942A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "PADetect/Info.plist";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = "";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.startable.PADetect;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "PADetect/PADetect-Bridging-Header.h";
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = "PADetect-Swift.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		4D9CFAD42E487499005D942A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "PADetect/Info.plist";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = "";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.startable.PADetect;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "PADetect/PADetect-Bridging-Header.h";
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = "PADetect-Swift.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		4D9CFAD62E487499005D942A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.startable.PADetectTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PADetect.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PADetect";
+			};
+			name = Debug;
+		};
+		4D9CFAD72E487499005D942A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.startable.PADetectTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PADetect.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PADetect";
+			};
+			name = Release;
+		};
+		4D9CFAD92E487499005D942A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.startable.PADetectUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = PADetect;
+			};
+			name = Debug;
+		};
+		4D9CFADA2E487499005D942A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.startable.PADetectUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = PADetect;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4D9CFAAC2E487497005D942A /* Build configuration list for PBXProject "PADetect" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D9CFAD02E487499005D942A /* Debug */,
+				4D9CFAD12E487499005D942A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D9CFAD22E487499005D942A /* Build configuration list for PBXNativeTarget "PADetect" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D9CFAD32E487499005D942A /* Debug */,
+				4D9CFAD42E487499005D942A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D9CFAD52E487499005D942A /* Build configuration list for PBXNativeTarget "PADetectTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D9CFAD62E487499005D942A /* Debug */,
+				4D9CFAD72E487499005D942A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D9CFAD82E487499005D942A /* Build configuration list for PBXNativeTarget "PADetectUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D9CFAD92E487499005D942A /* Debug */,
+				4D9CFADA2E487499005D942A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 4D9CFAA92E487497005D942A /* Project object */;
+}

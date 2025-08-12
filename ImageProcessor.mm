@@ -1,0 +1,828 @@
+/*
+ * Copyright 2024 Sheng Han
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "ImageProcessor.h"
+#include "MyLogger.hpp"
+#include "CommonUtils.h"
+#include "MNNDetector.h"
+#include "PADetectCore.h"
+
+#include <chrono>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+#include <filesystem>
+#include <algorithm>
+
+#import <AVFoundation/AVFoundation.h>
+
+namespace fs = std::filesystem;
+constexpr int32_t MAX_CAP_IDX = 9;
+
+void getDateAndImgStr(std::string &dataStr, std::string &ImgStr) {
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
+
+    char dataBuf[128];
+    strftime(dataBuf, sizeof(dataBuf), "%Y-%m-%d_%H-%M-%S", std::localtime(&now_time_t));
+    std::string fullDateTimeStr = dataBuf;
+    dataStr = fullDateTimeStr.substr(0, fullDateTimeStr.find('_'));
+    ImgStr = dataBuf;
+}
+
+std::string getDateStr() {
+    auto now = std::chrono::system_clock::now();
+    auto now_time = std::chrono::system_clock::to_time_t(now);
+
+    // 获取毫秒部分
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()) % 1000;
+
+    // 线程安全的时间转换
+    std::tm tm_buffer;
+#ifdef _WIN32
+    localtime_s(&tm_buffer, &now_time);
+#else
+    localtime_r(&now_time, &tm_buffer);
+#endif
+
+    std::ostringstream oss;
+    oss << std::put_time(&tm_buffer, "%Y-%m-%d_%H-%M-%S")
+        << "-" << std::setfill('0') << std::setw(3) << ms.count();
+
+    return oss.str();
+}
+
+// Function to get camera device names (macOS only)
+std::vector<std::string> getCameraDeviceNames(std::vector<int>& deviceIDs) {
+    std::vector<std::string> deviceNames;
+    
+    // macOS implementation using AVFoundation
+    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
+        discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera]
+        mediaType:AVMediaTypeVideo
+        position:AVCaptureDevicePositionUnspecified];
+    NSArray<AVCaptureDevice *> *devices = discoverySession.devices;
+    for (NSUInteger i = 0; i < devices.count; i++) {
+        AVCaptureDevice *device = devices[i];
+        std::string deviceName = [device.localizedName UTF8String];
+        deviceNames.push_back(deviceName);
+        deviceIDs.push_back((int)i);
+    }
+
+    return deviceNames;
+}
+
+// Determine if the device name corresponds to a built-in camera
+bool IsBuiltInCamera(const std::string& deviceName) {
+    static const std::vector<std::string> builtInKeywords = {
+        "integrated", "built-in", "internal", "builtin", "内建"
+    };
+
+    std::string lowerDeviceName = CommonUtils::string2Lower(deviceName);
+    for (const auto& keyword : builtInKeywords) {
+        if (lowerDeviceName.find(keyword) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+ImageProcessor::ImageProcessor() {
+    MY_SPDLOG_DEBUG(">>>");
+}
+
+ImageProcessor::ImageProcessor(
+    int32_t capInterval,
+    int32_t cameraId,
+    int32_t cameraWidth,
+    int32_t cameraHeight) :
+    m_capInterval(capInterval),
+    m_cameraId(cameraId),
+    m_cameraWidth(cameraWidth),
+    m_cameraHeight(cameraHeight) {
+    MY_SPDLOG_DEBUG(">>>");
+#if PLATFORM_WINDOWS
+    m_hAlertEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+#endif
+}
+
+ImageProcessor::~ImageProcessor() {
+    MY_SPDLOG_DEBUG("<<<");
+}
+
+void ImageProcessor::prepare() {
+    // m_scrShot = std::make_unique<ScreenShotWindows>(); // Windows screenshot removed for macOS
+    // bool ret = m_scrShot->init(); // Screenshot functionality removed for macOS
+    // MY_SPDLOG_INFO("screen shot init ret: {}", ret);
+}
+
+void ImageProcessor::start() {
+    m_continue.store(true);
+    m_thread = std::thread(&ImageProcessor::work, this);
+
+    m_alertContinue.store(true);
+    m_alertThd = std::thread(&ImageProcessor::alertWork, this);
+}
+
+void ImageProcessor::stop() {
+    m_continue.store(false);
+    if (m_thread.joinable()) {
+        m_thread.join();
+    }
+
+    m_alertContinue.store(false);
+#if PLATFORM_WINDOWS
+    SetEvent(m_hAlertEvent);
+#endif
+    if (m_alertThd.joinable()) {
+        m_alertThd.join();
+    }
+
+    if (m_scrShot) {
+        m_scrShot->deinit();
+    }
+
+    if (!m_testVideoPath.empty()) { writeTestDataToJson(); }
+}
+
+void ImageProcessor::setAlertEnables(const bool alertPhoneEnable, const bool alertPeepEnable,
+    const bool alertNobodyEnable, const bool alertNobodyLockEnable, const bool alertNoconnectEnable) {
+    m_alertPhoneEnable = alertPhoneEnable;
+    m_alertPeepEnable = alertPeepEnable;
+    m_alertNobodyEnable = alertNobodyEnable;
+    m_alertNobodyLockEnable = alertNobodyLockEnable;
+    m_alertNoconnectEnable = alertNoconnectEnable;
+}
+
+void ImageProcessor::setTestConfigs(const bool sourcePreview, const std::string& testVideoPath)
+{
+    m_testSourcePreview = sourcePreview;
+    m_testVideoPath = testVideoPath;
+}
+
+bool ImageProcessor::getWorkThreadStatus() const
+{
+    return m_workThreadStatus.load();
+}
+
+void ImageProcessor::work() {
+
+    try {
+        if (m_testVideoPath.empty()) {
+            // camera
+            MY_SPDLOG_INFO("camera width: {} height: {}", m_cameraWidth, m_cameraHeight);
+            /*
+            if (false == openCameraOnce(m_cameraId)) {
+                m_cap.reset();
+                cv::destroyAllWindows();
+                throw std::runtime_error("open camera once failed");
+            }
+            */
+            if (!openCameraUntilTrue()) {
+                throw std::runtime_error("open camera untile true failed");
+            }
+        }
+        else {
+            if (false == openVideoOnce()) {
+                m_cap.reset();
+                cv::destroyAllWindows();
+                throw std::runtime_error("open video once failed");
+            }
+        }
+
+        // 获取MNN检测器实例
+        extern MNNDetector* g_mnn_detector;
+        MNNDetector* detector = g_mnn_detector;
+        int32_t cam_width = static_cast<int32_t>(m_cap->get(cv::CAP_PROP_FRAME_WIDTH));
+        int32_t cam_height = static_cast<int32_t>(m_cap->get(cv::CAP_PROP_FRAME_HEIGHT));
+        MY_SPDLOG_INFO("camera real resolution {} x {}", cam_width, cam_height);
+        uint32_t lenCnt = 0, phoneCnt = 0, faceCnt = 0, suspectedCnt = 0;
+        while (m_continue.load()) {
+            if (!m_cap) { // only camera situation could run into here
+                if (!openCameraUntilTrue()) {
+                    throw std::runtime_error("open camera untile true failed");
+                }
+            }
+            // 图像捕获
+            m_cap->read(m_cameraFrame);
+            if (m_cameraFrame.empty()) {
+                if (m_testVideoPath.empty()) { // camera disconnect
+                    MY_SPDLOG_ERROR("Frame capture failed. Attempting to reconnect...");
+                    if (!openCameraUntilTrue()) {
+                        throw std::runtime_error("open camera untile true failed");
+                    }
+                    continue;
+                }
+                else { // video end of stream
+                    throw std::runtime_error("video end of stream");
+                    break;
+                }
+            }
+
+            // MNN对象检测
+            // double detectCost = 0.0; // Unused variable removed
+            lenCnt = 0;
+            phoneCnt = 0;
+            faceCnt = 0;
+            suspectedCnt = 0;
+            
+            if (detector) {
+                // MNN检测器返回检测结果
+                std::vector<Detection> detections = detector->detect(m_cameraFrame);
+                
+                // 统计各类别数量
+                for (const auto& det : detections) {
+                    if (det.class_id == 1) { // lens
+                        lenCnt++;
+                    } else if (det.class_id == 2) { // phone
+                        phoneCnt++;
+                    } else if (det.class_id == 0) { // face
+                        faceCnt++;
+                    }
+                }
+            }
+            MY_SPDLOG_TRACE("lenCnt {} phoneCnt {} faceCnt {} suspectedCnt {}",
+                            lenCnt, phoneCnt, faceCnt, suspectedCnt);
+
+            // 通知检测结果到PADetectCore
+            PADetectCore* core = PADetectCore::getInstance();
+            if (core) {
+                DetectionResult result;
+                result.lenCount = lenCnt;
+                result.phoneCount = phoneCnt;
+                result.faceCount = faceCnt;
+                result.suspectedCount = suspectedCnt;
+                core->reportDetectionResult(result);
+            }
+
+            // 确定警报类型和睡眠间隔 - AlertWindowManager已删除，改用简单枚举
+            // 定义简单的alert类型枚举
+            enum ALERT_TYPE {
+                    TEXT_PHONE = 0,
+                    TEXT_PEEP,
+                    TEXT_NOBODY,
+                    TEXT_OCCLUDE,
+                    TEXT_NOCONNECT,
+                    TEXT_SUSPECT,
+                    COUNT,
+                };
+            int newMode = ALERT_TYPE::COUNT;
+            long sleepInterval = m_capInterval;  // 默认采样间隔
+
+            {                
+                std::shared_lock<std::shared_mutex> readLock(m_paramMtx);
+                if (0 != lenCnt || 0 != phoneCnt) {
+                    ++m_detPhoneCnt;
+                    newMode = m_alertPhoneEnable ? ALERT_TYPE::TEXT_PHONE : newMode;
+                    sleepInterval = m_alertShowInterval;
+                    m_isNoFaceTiming = false;
+                }
+                else if (1 < faceCnt) {
+                    ++m_detPeepCnt;
+                    newMode = m_alertPeepEnable ? ALERT_TYPE::TEXT_PEEP : newMode;
+                    sleepInterval = m_alertShowInterval;
+                    m_isNoFaceTiming = false;
+                }
+                else if (0 == faceCnt) {
+                    if (isCameraOccludedByTraditional(m_cameraFrame)) {
+                        ++m_detOcclude;
+                        newMode = m_alertOcculeEnable ? ALERT_TYPE::TEXT_OCCLUDE : newMode;
+                        sleepInterval = m_alertShowInterval;
+                        handleNoFaceLock();
+                    }
+                    else {
+                        ++m_detNobodyCnt;
+                        newMode = m_alertNobodyEnable ? ALERT_TYPE::TEXT_NOBODY : newMode;
+                        sleepInterval = m_alertShowInterval;
+                        handleNoFaceLock();
+                    }
+                }
+                else if (0 != suspectedCnt) {
+                    newMode = m_alertSuspectEnable ? ALERT_TYPE::TEXT_SUSPECT : newMode;
+                    sleepInterval = m_alertShowInterval;
+                    m_isNoFaceTiming = false;
+                }
+                else {  // 单张人脸情况
+                    sleepInterval = m_capInterval;
+                    m_isNoFaceTiming = false;
+                }
+            }
+
+            // 添加警报任务（如果模式改变）
+            if (newMode != m_lastAlertMode) {
+                {
+                    std::unique_lock<std::mutex> lock(m_alertMtx);
+                    m_alertTaskVec.emplace_back(newMode);
+                }
+#if PLATFORM_WINDOWS
+ SetEvent(m_hAlertEvent);
+#endif
+            }
+
+            // 睡眠控制
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleepInterval));
+
+            // 调试模式退出检查
+            if (m_testSourcePreview && cv::waitKey(1) >= 0)
+                break;
+        }
+        m_cap.reset();
+        cv::destroyAllWindows();
+    }
+    catch (const std::exception& e) {
+        m_workThreadStatus.store(false);
+        MY_SPDLOG_TRACE("work thread exit since: {}", e.what() );
+        return;
+    }
+}
+
+#define USE_DATA_DIR 0
+
+void ImageProcessor::alertWork() {
+    MY_SPDLOG_INFO(">>>");
+
+    // AlertWindowManager已删除，改用事件机制与SwiftUI通信
+    // AlertWindowManager* alertWindMgr = AlertWindowManager::getInstance();
+    // alertWindMgr->initGDIPlus();
+    // if (false == alertWindMgr->initWind()) {
+    //     MY_SPDLOG_CRITICAL("register alert window class failed");
+    //     return;
+    // }
+
+    // screen - removed for macOS compatibility
+    // int32_t screenWidth = 0, screenHeight = 0;
+    // m_scrShot->getScreenResolution(screenWidth, screenHeight);
+    // MY_SPDLOG_TRACE("screen width: {} height: {}", screenWidth, screenHeight);
+    // std::unique_ptr<uint8_t[]> screenBuf = std::make_unique<uint8_t[]>(screenWidth * screenHeight * 4);
+    // std::memset(screenBuf.get(), 0, screenWidth * screenHeight * 4);
+    // cv::Mat screenFrame(screenHeight, screenWidth, CV_8UC4, screenBuf.get());
+    // pic file upload - removed for macOS compatibility
+    // PicFileUploader* picUploader = PicFileUploader::getInstance();
+    // picUploader->start();
+
+    //std::string prefixCapPathStr = imgCapDir.string();
+    fs::path dirPath = "data";
+    std::string baseDir = "";
+    bool curDirCreate = false;
+    try {
+        if (fs::create_directory(dirPath)) {
+            MY_SPDLOG_INFO("current directory created successfully.");
+        }
+        else {
+            MY_SPDLOG_WARN("current directory already exists");
+        }
+        curDirCreate = true;
+    }
+    catch (const fs::filesystem_error& e) {
+        MY_SPDLOG_WARN("Error creating directory: {}", e.what());
+        curDirCreate = false;
+    }
+
+    if (curDirCreate) {
+        baseDir = dirPath.string();
+    }
+
+    std::string PreDateStr{ "" }, preImgStr{ "" };
+    getDateAndImgStr(PreDateStr, preImgStr);
+    std::string prefixPathStr = baseDir;
+    fs::create_directories(prefixPathStr);
+    // work thread loop
+    // 设置 JPEG 图像质量
+    std::vector<int> params;
+    params.push_back(cv::IMWRITE_JPEG_QUALITY);
+    params.push_back(60); // 设置质量为 60
+
+    while (m_alertContinue.load()) {
+        // macOS简化的等待机制
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+        std::unique_lock<std::mutex> lock(m_alertMtx);
+        if (!m_alertContinue.load()) break;
+        // AlertWindowManager相关代码已删除，改用事件机制与SwiftUI通信
+        if (m_alertTaskVec.empty()) continue;
+        m_lastAlertMode = m_alertTaskVec.back();
+        m_alertTaskVec.clear();
+        lock.unlock();
+
+        // 原有的AlertWindowManager switch语句已完全删除
+        // 改为使用事件机制与SwiftUI通信
+        // TODO: 实现具体的事件通知机制
+        MY_SPDLOG_DEBUG("Alert event detected, should notify SwiftUI");
+    }
+    // picUploader->stop();
+    // AlertWindowManager已删除
+    // alertWindMgr->deinitWind();
+    // alertWindMgr->deinitGDIPlus();
+    MY_SPDLOG_INFO("<<<");
+}
+
+bool ImageProcessor::openCameraOnce(int32_t /* cameraId */) {
+    auto beforeTime = std::chrono::steady_clock::now();
+    m_cap.reset(new cv::VideoCapture(m_cameraId, cv::CAP_AVFOUNDATION));
+    if (m_cap->isOpened()) {
+        m_cap->set(cv::CAP_PROP_FRAME_WIDTH, m_cameraWidth);
+        m_cap->set(cv::CAP_PROP_FRAME_HEIGHT, m_cameraHeight);
+        auto afterTime = std::chrono::steady_clock::now();
+        double duration_millsecond = std::chrono::duration<double, std::milli>(afterTime - beforeTime).count();
+        MY_SPDLOG_ERROR("device: {} open success, spend: {} ms", m_cameraId, duration_millsecond);
+        return true;
+    }
+    MY_SPDLOG_ERROR("device: {} open failed", m_cameraId);
+    return false;
+}
+
+bool ImageProcessor::openVideoOnce()
+{
+    m_cap.reset(new cv::VideoCapture(m_testVideoPath));
+    if (m_cap->isOpened()) {
+        m_cap->set(cv::CAP_PROP_FRAME_WIDTH, m_cameraWidth);
+        m_cap->set(cv::CAP_PROP_FRAME_HEIGHT, m_cameraHeight);
+        return true;
+    }
+    return false;
+}
+
+bool ImageProcessor::openCameraUntilTrue() {
+#ifdef __APPLE__
+    MY_SPDLOG_INFO("Starting camera initialization on macOS");
+    
+    // 检查摄像头权限
+    AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
+    MY_SPDLOG_INFO("Camera permission status: {}", (int)status);
+    
+    if (status != AVAuthorizationStatusAuthorized) {
+        MY_SPDLOG_ERROR("Camera permission not granted. Status: {}", (int)status);
+        if (status == AVAuthorizationStatusNotDetermined) {
+            MY_SPDLOG_INFO("Requesting camera permission...");
+            // 同步等待权限请求结果
+            dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+            __block BOOL permissionGranted = NO;
+            [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
+                permissionGranted = granted;
+                if (granted) {
+                    MY_SPDLOG_INFO("Camera permission granted");
+                } else {
+                    MY_SPDLOG_ERROR("Camera permission denied by user");
+                }
+                dispatch_semaphore_signal(semaphore);
+            }];
+            dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+            dispatch_release(semaphore);
+            
+            if (!permissionGranted) {
+                return false;
+            }
+        } else {
+            MY_SPDLOG_ERROR("Camera permission denied or restricted");
+            return false;
+        }
+    } else {
+        MY_SPDLOG_INFO("Camera permission already granted");
+    }
+    
+    // 枚举可用的摄像头设备
+    MY_SPDLOG_INFO("Enumerating available camera devices...");
+    std::vector<int32_t> availableDevices;
+    
+    // 使用系统API枚举设备
+    NSArray<AVCaptureDevice *> *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    MY_SPDLOG_INFO("System detected {} camera devices:", devices.count);
+    for (NSUInteger i = 0; i < devices.count; i++) {
+        AVCaptureDevice *device = devices[i];
+        MY_SPDLOG_INFO("  Device {}: {} ({})", i, [device.localizedName UTF8String], [device.uniqueID UTF8String]);
+        availableDevices.push_back((int32_t)i);
+    }
+    
+    MY_SPDLOG_INFO("Total available camera devices: {}", availableDevices.size());
+    
+    if (availableDevices.empty()) {
+        MY_SPDLOG_ERROR("No camera devices found! This may indicate a permission or hardware issue.");
+        return false;
+    }
+    
+    // 如果指定的设备ID不在可用列表中，使用第一个可用设备
+    if (std::find(availableDevices.begin(), availableDevices.end(), m_cameraId) == availableDevices.end()) {
+        MY_SPDLOG_WARN("Requested camera ID {} not available, using device ID {}", m_cameraId, availableDevices[0]);
+        m_cameraId = availableDevices[0];
+    }
+    
+    MY_SPDLOG_INFO("Using camera device ID: {}", m_cameraId);
+#endif
+
+    while (true) {
+        if (m_cap) { m_cap.reset(); }
+        auto beforeTime = std::chrono::steady_clock::now();
+        MY_SPDLOG_ERROR("device: {} try open camera", m_cameraId);
+        m_cap.reset(new cv::VideoCapture(m_cameraId, cv::CAP_AVFOUNDATION));
+        if (m_cap->isOpened()) {
+            m_cap->set(cv::CAP_PROP_FRAME_WIDTH, m_cameraWidth);
+            m_cap->set(cv::CAP_PROP_FRAME_HEIGHT, m_cameraHeight);
+            auto afterTime = std::chrono::steady_clock::now();
+            double duration_millsecond = std::chrono::duration<double, std::milli>(afterTime - beforeTime).count();
+            MY_SPDLOG_ERROR("device: {} open success, spend: {} ms", m_cameraId, duration_millsecond);
+            return true;
+        }
+
+        // 摄像头打开失败，记录详细错误信息
+        MY_SPDLOG_ERROR("Failed to open camera device: {} after permission check and device enumeration", m_cameraId);
+        MY_SPDLOG_ERROR("This may indicate a hardware issue or the camera is being used by another application");
+        
+        // open camera failed - AlertWindowManager已删除，改用简单常量
+        const int TEXT_NOCONNECT = 6;
+        const int COUNT = 0;
+        if (m_alertNoconnectEnable) {
+            if (m_lastAlertMode != TEXT_NOCONNECT) {
+                {
+                    std::unique_lock<std::mutex> lock(m_alertMtx);
+                    m_alertTaskVec.emplace_back(TEXT_NOCONNECT);
+                }
+            }
+        }
+        else {
+            if (m_lastAlertMode != COUNT) {
+                {
+                    std::unique_lock<std::mutex> lock(m_alertMtx);
+                    m_alertTaskVec.emplace_back(COUNT);
+                }
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_alertShowInterval));
+    }
+    return false;
+}
+
+void ImageProcessor::saveMatWithEncode(cv::Mat& inMat, const std::string& inFilePath, const std::vector<int>& encParam, bool isSuspected)
+{
+
+    std::vector<uint8_t> jpg_buffer;
+    if (!cv::imencode(".jpg", inMat, jpg_buffer, encParam)) {
+        MY_SPDLOG_ERROR("encode {} jpg failed", inFilePath.c_str());
+        return;
+    }
+
+    size_t pos = inFilePath.find("/");
+    if (pos != std::string::npos) {
+        std::string result = inFilePath.substr(pos + 1);
+        std::string filePathBase64Enc = CommonUtils::Base64::encode(result);
+        const uint32_t headerLen = htonl(filePathBase64Enc.size());
+
+        // 添加疑似标志(1字节)
+        uint8_t suspectedFlag = isSuspected ? 1 : 0;
+
+        std::vector<uint8_t> final_data;
+        final_data.reserve(sizeof(headerLen) + filePathBase64Enc.size() + sizeof(suspectedFlag) + jpg_buffer.size());
+
+        // 添加头部长度
+        const uchar* len_ptr = reinterpret_cast<const uchar*>(&headerLen);
+        final_data.insert(final_data.end(), len_ptr, len_ptr + sizeof(uint32_t));
+
+        // 添加Base64编码的文件路径
+        final_data.insert(final_data.end(), filePathBase64Enc.begin(), filePathBase64Enc.end());
+
+        // 添加疑似标志
+        final_data.push_back(suspectedFlag);
+
+        // 添加JPEG原始数据
+        final_data.insert(final_data.end(), jpg_buffer.begin(), jpg_buffer.end());
+
+        PicFileUploader* picUploader = PicFileUploader::getInstance();
+        picUploader->writePic2Disk(inFilePath, final_data);
+    }
+}
+
+void ImageProcessor::saveRiskEventFile(const std::string& fileName,
+    const std::string& eventName, const std::string& eventTime) {
+    try {
+        std::ofstream outFile(fileName);
+        if(outFile.is_open()) {
+            outFile << "EVENT_" << eventName.c_str() << eventTime.c_str() << "\n";
+            outFile.close();
+        }
+    } catch (const std::exception &e) {
+        MY_SPDLOG_ERROR("save risk event file exception: {}", e.what());
+    }
+}
+
+void ImageProcessor::handleNoFaceLock() {
+    if (!m_alertNobodyEnable && !m_alertOcculeEnable) return;
+
+    // 锁屏处理
+    if (m_alertNobodyLockEnable) {
+        if (!m_isNoFaceTiming) {
+            m_noFaceStartTime = std::chrono::steady_clock::now();
+            MY_SPDLOG_DEBUG("No face lock time begin");
+            m_isNoFaceTiming = true;
+        }
+        else {
+            auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - m_noFaceStartTime);
+            MY_SPDLOG_DEBUG("No face duration: {} ms", duration_ms.count());
+
+            if (duration_ms.count() >= m_noFaceLockTimeout) {
+                MY_SPDLOG_INFO("No face timeout reached, triggering screen lock");
+                // macOS锁屏功能
+                system("pmset displaysleepnow");
+                m_isNoFaceTiming = false; // 重置计时状态
+            }
+        }
+    }
+}
+
+void ImageProcessor::processWindowsMessages() {
+#if PLATFORM_WINDOWS
+    MSG msg;
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+#endif
+}
+
+void ImageProcessor::writeTestDataToJson() {
+    Json::Value root;
+
+    root["detNobodyCnt"] = Json::Value::UInt64(m_detNobodyCnt);
+    root["detPeepCnt"] = Json::Value::UInt64(m_detPeepCnt);
+    root["detPhoneCnt"] = Json::Value::UInt64(m_detPhoneCnt);
+
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "  ";
+
+    try {
+        CommonUtils::FileHelper::writeStrToFile("test.json", Json::writeString(writer, root));
+    }
+    catch (const std::exception &e) {
+        MY_SPDLOG_WARN("write test json to test.json exception: {}", e.what());
+    }
+}
+
+void ImageProcessor::onConfigUpdated(std::shared_ptr<MyMeta>& newMeta) {
+    setDetectParam(newMeta);
+}
+
+void ImageProcessor::setDetectParam(const std::shared_ptr<MyMeta>& meta) {
+    if (!m_isCfgListReg) {
+        ConfigParser* cfg = ConfigParser::getInstance();
+        cfg->registerListener("imageProcessSettings", this);
+        m_isCfgListReg = true;
+    }
+
+    {        std::unique_lock<std::shared_mutex> writeLock(m_paramMtx);
+        // 基础参数
+        static bool isCamInit = false;
+        if (!isCamInit) {
+            m_cameraId = meta->getInt32OrDefault("camera_id", m_cameraId);
+            m_cameraWidth = meta->getInt32OrDefault("camera_width", m_cameraWidth);
+            m_cameraHeight = meta->getInt32OrDefault("camera_height", m_cameraHeight);
+            isCamInit = true;
+        }
+
+        m_capInterval = meta->getInt32OrDefault("detect_interval", m_capInterval);
+        m_alertShowInterval = meta->getInt32OrDefault("alert_show_interval", m_alertShowInterval);
+
+        // 手机检测开关
+        m_alertPhoneEnable = meta->getBoolOrDefault("alert_phone_enable", m_alertPhoneEnable);
+        m_alertPhoneWindowEnable = meta->getBoolOrDefault("alert_phone_window_enable", m_alertPhoneWindowEnable);
+        m_alertPhoneScreenEnable = meta->getBoolOrDefault("alert_phone_screen_enable", m_alertPhoneScreenEnable);
+        m_alertPhoneCameraEnable = meta->getBoolOrDefault("alert_phone_camera_enable", m_alertPhoneCameraEnable);
+
+        // 可疑检测开关
+        m_alertSuspectEnable = meta->getBoolOrDefault("alert_suspect_enable", m_alertSuspectEnable);
+        m_alertSuspectScreenEnable = meta->getBoolOrDefault("alert_suspect_screen_enable", m_alertSuspectScreenEnable);
+        m_alertSuspectCameraEnable = meta->getBoolOrDefault("alert_suspect_camera_enable", m_alertSuspectCameraEnable);
+
+        // 偷窥检测开关
+        m_alertPeepEnable = meta->getBoolOrDefault("alert_peep_enable", m_alertPeepEnable);
+        m_alertPeepWindowEnable = meta->getBoolOrDefault("alert_peep_window_enable", m_alertPeepWindowEnable);
+
+        // 无人检测开关
+        m_alertNobodyEnable = meta->getBoolOrDefault("alert_nobody_enable", m_alertNobodyEnable);
+        m_alertNobodyWindowEnable = meta->getBoolOrDefault("alert_nobody_window_enable", m_alertNobodyWindowEnable);
+        m_alertNobodyLockEnable = meta->getBoolOrDefault("alert_nobody_lock_enable", m_alertNobodyLockEnable);
+        // occlude detect switch
+        m_alertOcculeEnable = meta->getBoolOrDefault("alert_occlude_enable", m_alertOcculeEnable);
+        m_alertOccludeWindowEnable = meta->getBoolOrDefault("alert_occlude_window_enable", m_alertOccludeWindowEnable);
+        m_brightnessThresholdLow = meta->getDoubleOrDefault("brightness_threshold_low", m_brightnessThresholdLow);
+        m_brightnessThresholdHigh = meta->getDoubleOrDefault("brightness_threshold_high", m_brightnessThresholdHigh);
+        // 断连检测开关
+        m_alertNoconnectEnable = meta->getBoolOrDefault("alert_noconnect_enable", m_alertNoconnectEnable);
+        m_alertNoconnectWindowEnable = meta->getBoolOrDefault("alert_noconnect_window_enable", m_alertNoconnectWindowEnable);
+    }
+    // 日志输出保持不变
+    MY_SPDLOG_DEBUG("配置更新: \n"
+              "cap_interval={}, alert_interval={}, cam_id={}, cam_w={}, cam_h={}, \n"
+              "phone_en={}, phone_win={}, phone_scr={}, phone_cam={}, \n"
+              "suspect_en={}, suspect_scr={}, suspect_cam={}, \n"
+              "peep_en={}, peep_win={}, \n"
+              "nobody_en={}, nobody_win={}, nobody_lock={}, \n"
+              "occlude_en={}, occlude_win={}, \n"
+              "bri_low={}, bri_hight={}, \n"
+              "noconnect_en={}, noconnect_win={}",
+
+              // 第一行：基础参数 (5个)
+              m_capInterval, m_alertShowInterval,
+              m_cameraId, m_cameraWidth, m_cameraHeight,
+
+              // 第二行：手机检测开关 (4个)
+              m_alertPhoneEnable, m_alertPhoneWindowEnable,
+              m_alertPhoneScreenEnable, m_alertPhoneCameraEnable,
+
+              // 第三行：可疑检测开关 (3个)
+              m_alertSuspectEnable,
+              m_alertSuspectScreenEnable, m_alertSuspectCameraEnable,
+
+              // 第四行：偷窥检测开关 (2个)
+              m_alertPeepEnable, m_alertPeepWindowEnable,
+
+              // 第五行：无人检测开关 (3个)
+              m_alertNobodyEnable,
+              m_alertNobodyWindowEnable, m_alertNobodyLockEnable,
+
+              // occlude swich (2)
+              m_alertOcculeEnable, m_alertOccludeWindowEnable,
+              // occlude threadhold of brightness
+              m_brightnessThresholdLow, m_brightnessThresholdHigh,
+
+              // 断连检测开关 (2个)
+              m_alertNoconnectEnable, m_alertNoconnectWindowEnable);
+}
+
+void ImageProcessor::setTestParam(const std::shared_ptr<MyMeta>& meta) {
+    // 使用类型安全的默认值获取方法
+    m_testSourcePreview = meta->getBoolOrDefault("test_source_preview", m_testSourcePreview);
+    m_testVideoPath = meta->getStringOrDefault("test_video_path", m_testVideoPath);
+
+    // 日志输出保持不变
+    MY_SPDLOG_DEBUG("测试参数更新: m_testSourcePreview={}, m_testVideoPath='{}'",
+                   m_testSourcePreview, m_testVideoPath);
+}
+
+void ImageProcessor::setNoFaceLockEnabled(bool enabled) {
+    std::unique_lock<std::shared_mutex> writeLock(m_paramMtx);
+    m_alertNobodyLockEnable = enabled;
+    MY_SPDLOG_DEBUG("No face lock enabled: {}", enabled);
+}
+
+void ImageProcessor::setNoFaceLockTimeout(int32_t timeoutMs) {
+    std::unique_lock<std::shared_mutex> writeLock(m_paramMtx);
+    m_noFaceLockTimeout = timeoutMs;
+    MY_SPDLOG_DEBUG("No face lock timeout set to: {} ms", timeoutMs);
+}
+
+bool ImageProcessor::isCameraOccludedByTraditional(cv::InputArray frame) {
+    cv::Mat gray;
+    cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+
+    // STEP 1: 超快速中心亮度检测 (3μs)
+    const int grid_w = gray.cols / 4;
+    const int grid_h = gray.rows / 4;
+    const int x1 = grid_w, x2 = grid_w * 2;
+    const int y1 = grid_h, y2 = grid_h * 2;
+
+    // 检测1：中心区域过暗 → 直接判定遮挡
+    double center_brightness =
+        cv::mean(gray(cv::Rect(x1, y1, grid_w, grid_h)))[0] +
+        cv::mean(gray(cv::Rect(x2, y1, grid_w, grid_h)))[0] +
+        cv::mean(gray(cv::Rect(x1, y2, grid_w, grid_h)))[0] +
+        cv::mean(gray(cv::Rect(x2, y2, grid_w, grid_h)))[0];
+    center_brightness /= 4.0;
+
+    if (center_brightness < m_brightnessThresholdLow) {
+        MY_SPDLOG_DEBUG("Occluded: center too dark {:.1f} < {}", center_brightness, m_brightnessThresholdLow);
+        return true;  // 3μs内完成判定
+    }
+
+    // STEP 2: 边缘检测 (仅90%场景需要)
+    cv::Mat edges;
+    cv::Canny(gray, edges, 50, 150);
+    const double edgeRatio = cv::countNonZero(edges) / static_cast<double>(gray.total());
+
+    // 检测2：边缘比例正常 → 通过
+    constexpr double EDGE_RATIO_THRESH = 0.01;
+    if (edgeRatio >= EDGE_RATIO_THRESH) {
+        return false;
+    }
+
+    // 检测3：边缘少但中心明亮 → 不是遮挡
+    if (center_brightness > m_brightnessThresholdHigh) {
+        // MY_SPDLOG_DEBUG("Not occluded: center bright {:.1f} > {}",center_brightness, BRIGHT_THRESH);
+        return false;
+    }
+
+    MY_SPDLOG_DEBUG("Occluded: low edges {:.4f} and medium center {:.1f}",
+                    edgeRatio, center_brightness);
+    return true;
+}

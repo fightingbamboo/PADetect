@@ -1,0 +1,497 @@
+//
+//  PADetectManager.swift
+//  PADetect macOS
+//
+
+import Foundation
+import AVFoundation
+import Combine
+import AppKit
+
+/// 摄像头权限状态
+public enum CameraPermissionStatus {
+    case notDetermined
+    case denied
+    case authorized
+    case restricted
+}
+
+/// PADetect管理器 - Swift封装类
+@MainActor
+public class PADetectManager: ObservableObject {
+    
+    // MARK: - Published Properties
+    
+    @Published public var isDetectionRunning: Bool = false
+    @Published public var detectionStatus: PADetectionStatus = .stopped
+    @Published public var lastDetectionResult: PADetectionResult = PADetectionResult(lenCount: 0, phoneCount: 0, faceCount: 0, suspectedCount: 0)
+    @Published public var currentAlert: PAAlertType? = nil
+    @Published public var errorMessage: String? = nil
+    @Published public var cameraPermissionStatus: CameraPermissionStatus = .notDetermined
+    
+    // MARK: - Private Properties
+    
+    private let bridge: PADetectBridge
+    private var cancellables = Set<AnyCancellable>()
+    
+    // MARK: - Configuration
+    
+    public struct Configuration {
+        public let modelPath: String
+        public let configPath: String
+        public let pipelinePath: String
+        public let device: String
+        
+        public init(modelPath: String, configPath: String, pipelinePath: String, device: String = "CPU") {
+            self.modelPath = modelPath
+            self.configPath = configPath
+            self.pipelinePath = pipelinePath
+            self.device = device
+        }
+    }
+    
+    public struct CameraSettings {
+        public var cameraId: Int32
+        public var width: Int32
+        public var height: Int32
+        
+        public init(cameraId: Int32 = 0, width: Int32 = 640, height: Int32 = 480) {
+            self.cameraId = cameraId
+            self.width = width
+            self.height = height
+        }
+    }
+    
+    // MARK: - Initialization
+    
+    public init() {
+        self.bridge = PADetectBridge.sharedInstance()
+        setupCallbacks()
+        updateCameraPermissionStatus()
+    }
+    
+    // MARK: - Camera Permission Methods
+    
+    /// 检查当前摄像头权限状态
+    public func checkCameraPermission() -> CameraPermissionStatus {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        let permissionStatus: CameraPermissionStatus
+        
+        switch status {
+        case .notDetermined:
+            permissionStatus = .notDetermined
+        case .denied:
+            permissionStatus = .denied
+        case .authorized:
+            permissionStatus = .authorized
+        case .restricted:
+            permissionStatus = .restricted
+        @unknown default:
+            permissionStatus = .denied
+        }
+        
+        DispatchQueue.main.async {
+            self.cameraPermissionStatus = permissionStatus
+        }
+        
+        return permissionStatus
+    }
+    
+    /// 请求摄像头权限
+    public func requestCameraPermission() async -> Bool {
+        let currentStatus = checkCameraPermission()
+        
+        // 如果已经授权，直接返回true
+        if currentStatus == .authorized {
+            return true
+        }
+        
+        // 如果权限被拒绝或受限，返回false
+        if currentStatus == .denied || currentStatus == .restricted {
+            await MainActor.run {
+                self.errorMessage = "摄像头权限被拒绝。请在系统设置 > 隐私与安全性 > 摄像头中启用PADetect的摄像头权限。"
+            }
+            return false
+        }
+        
+        // 请求权限
+        return await withCheckedContinuation { continuation in
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        self.cameraPermissionStatus = .authorized
+                        NSLog("[PADetect] Camera permission granted")
+                    } else {
+                        self.cameraPermissionStatus = .denied
+                        self.errorMessage = "摄像头权限被拒绝。请在系统设置 > 隐私与安全性 > 摄像头中启用PADetect的摄像头权限。"
+                        NSLog("[PADetect] Camera permission denied")
+                    }
+                }
+                continuation.resume(returning: granted)
+            }
+        }
+    }
+    
+    /// 打开系统设置页面
+    public func openSystemPreferences() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    /// 更新摄像头权限状态
+    private func updateCameraPermissionStatus() {
+        _ = checkCameraPermission()
+    }
+    
+    // MARK: - Public Methods
+    
+    /// 初始化检测器
+    public func initialize(with configuration: Configuration) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            do {
+                NSLog("[PADetect DEBUG] About to call bridge.initialize")
+                NSLog("[PADetect DEBUG] Model path: %@", configuration.modelPath)
+                NSLog("[PADetect DEBUG] Config path: %@", configuration.configPath)
+                NSLog("[PADetect DEBUG] Pipeline path: %@", configuration.pipelinePath)
+                NSLog("[PADetect DEBUG] Device: %@", configuration.device)
+                
+                try bridge.initialize(
+                    withModelPath: configuration.modelPath,
+                    configPath: configuration.configPath,
+                    pipelinePath: configuration.pipelinePath,
+                    device: configuration.device
+                )
+                NSLog("[PADetect DEBUG] bridge.initialize completed successfully")
+                continuation.resume()
+            } catch {
+                NSLog("[PADetect DEBUG] bridge.initialize failed: %@", error.localizedDescription)
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+    
+    /// 加载配置文件
+    public func loadConfig(from path: String) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            do {
+                try bridge.loadConfig(fromPath: path)
+                continuation.resume()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+    
+    /// 加载服务器配置文件
+    public func loadServerConfig(from path: String) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            do {
+                try bridge.loadServerConfig(fromPath: path)
+                continuation.resume()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+    
+    /// 获取可用摄像头列表
+    public func getAvailableCameras() -> [String] {
+        return bridge.getAvailableCameras()
+    }
+    
+    /// 设置摄像头参数
+    public func setCameraSettings(_ settings: CameraSettings) throws {
+        try bridge.setCameraId(
+            settings.cameraId,
+            width: settings.width,
+            height: settings.height
+        )
+    }
+    
+    /// 重置检测结果
+    private func resetDetectionResults() {
+        lastDetectionResult = PADetectionResult(lenCount: 0, phoneCount: 0, faceCount: 0, suspectedCount: 0)
+    }
+    
+    /// 开始检测
+    public func startDetection() async throws {
+        // 开始检测前重置累计数据
+        resetDetectionResults()
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            do {
+                try bridge.startDetection()
+                continuation.resume()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+    
+    /// 停止检测
+    public func stopDetection() {
+        bridge.stopDetection()
+    }
+    
+    /// 设置测试模式
+    public func setTestMode(enabled: Bool, videoPath: String? = nil) {
+        bridge.setTestMode(enabled, videoPath: videoPath)
+    }
+    
+    /// 设置源预览
+    public func setSourcePreview(enabled: Bool) {
+        bridge.setSourcePreview(enabled)
+    }
+    
+    /// 设置告警开关
+    public func setAlertEnabled(_ enabled: Bool, for alertType: PAAlertType) {
+        bridge.setAlertEnabled(enabled, for: alertType)
+    }
+    
+    /// 显示告警
+    public func showAlert(for alertType: PAAlertType) {
+        bridge.showAlert(for: alertType)
+    }
+    
+    /// 隐藏告警
+    public func hideAlert() {
+        bridge.hideAlert()
+    }
+    
+    /// 检测单张图像
+    public func detectImage(_ image: CGImage) async throws -> PADetectionResult {
+        return try await withCheckedThrowingContinuation { continuation in
+            var error: NSError?
+            let result = bridge.detect(in: image, error: &error)
+            
+            if let error = error {
+                continuation.resume(throwing: error)
+            } else {
+                continuation.resume(returning: result)
+            }
+        }
+    }
+    
+    /// 设置检测阈值
+    public func setDetectionThreshold(_ threshold: Float, for alertType: PAAlertType) {
+        bridge.setDetectionThreshold(threshold, for: alertType)
+    }
+    
+    /// 设置告警间隔
+    public func setAlertInterval(_ intervalMs: Int32) {
+        bridge.setAlertInterval(intervalMs)
+    }
+    
+    /// 设置捕获间隔
+    public func setCaptureInterval(_ intervalMs: Int32) {
+        bridge.setCaptureInterval(intervalMs)
+    }
+    
+    /// 获取版本信息
+    public var version: String {
+        return bridge.getVersion()
+    }
+    
+    /// 设置日志级别
+    public func setLogLevel(_ level: Int) {
+        bridge.setLogLevel(level)
+    }
+    
+    // MARK: - Screen Lock Methods
+    
+    /// 设置无人脸锁屏功能开关
+    public func setNoFaceLockEnabled(_ enabled: Bool) {
+        bridge.setNoFaceLockEnabled(enabled)
+    }
+    
+    /// 设置无人脸锁屏超时时间（毫秒）
+    public func setNoFaceLockTimeout(_ timeoutMs: Int32) {
+        bridge.setNoFaceLockTimeout(timeoutMs)
+    }
+    
+    /// 手动触发锁屏
+    public func triggerScreenLock() {
+        bridge.triggerScreenLock()
+    }
+    
+    // MARK: - Private Methods
+    
+    private func setupCallbacks() {
+        // 设置检测结果回调
+        bridge.setDetectionCallback { [weak self] (result: PADetectionResult) in
+            Task { @MainActor in
+                // 累加检测结果而不是直接赋值
+                // if let self = self {
+                //     self.lastDetectionResult = PADetectionResult(
+                //         lenCount: self.lastDetectionResult.lenCount + result.lenCount,
+                //         phoneCount: self.lastDetectionResult.phoneCount + result.phoneCount,
+                //         faceCount: self.lastDetectionResult.faceCount + result.faceCount,
+                //         suspectedCount: self.lastDetectionResult.suspectedCount + result.suspectedCount
+                //     )
+                // }
+                if let self = self {
+                    self.lastDetectionResult = PADetectionResult(
+                        lenCount: result.lenCount,
+                        phoneCount: result.phoneCount,
+                        faceCount: result.faceCount,
+                        suspectedCount: result.suspectedCount
+                    )
+                }
+            }
+        }
+        
+        // 设置告警回调
+        bridge.setAlertCallback { [weak self] (alertType: PAAlertType) in
+            Task { @MainActor in
+                self?.currentAlert = alertType
+            }
+        }
+        
+        // 设置状态回调
+        bridge.setStatusCallback { [weak self] (status: PADetectionStatus, errorMessage: String?) in
+            Task { @MainActor in
+                self?.detectionStatus = status
+                self?.isDetectionRunning = (status == .running)
+                self?.errorMessage = errorMessage
+            }
+        }
+    }
+}
+
+// MARK: - Convenience Extensions
+
+extension PADetectManager {
+    
+    /// 使用默认配置初始化
+    public func initializeWithDefaults() async throws {
+        NSLog("[PADetect DEBUG] Starting initializeWithDefaults...")
+        
+        // 检查摄像头权限状态但不阻塞初始化
+        NSLog("[PADetect DEBUG] Checking camera permission status...")
+        let _ = checkCameraPermission()
+        NSLog("[PADetect DEBUG] Camera permission status checked, continuing with initialization...")
+        let bundle = Bundle.main
+        NSLog("[PADetect DEBUG] Bundle path: %@", bundle.bundlePath)
+        
+        guard let modelPath = bundle.path(forResource: "best_640", ofType: "mnn", inDirectory: "mnn_model") else {
+            NSLog("[PADetect DEBUG] Model file not found in bundle")
+            // 列出Resources目录内容进行调试
+            if let resourcesPath = bundle.resourcePath {
+                NSLog("[PADetect DEBUG] Resources path: %@", resourcesPath)
+                do {
+                    let contents = try FileManager.default.contentsOfDirectory(atPath: resourcesPath)
+                    NSLog("[PADetect DEBUG] Resources contents: %@", contents.description)
+                } catch {
+                    NSLog("[PADetect DEBUG] Error listing resources: %@", error.localizedDescription)
+                }
+            }
+            throw NSError(
+                domain: "PADetectManager",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Required MNN model file not found in bundle"]
+            )
+        }
+        
+        NSLog("[PADetect DEBUG] Model found at: %@", modelPath)
+        
+        // MNN模型不需要额外的配置文件
+        let config = Configuration(
+            modelPath: modelPath,
+            configPath: "", // MNN不需要配置文件
+            pipelinePath: "", // MNN不需要pipeline文件
+            device: "AUTO"
+        )
+        
+        NSLog("[PADetect DEBUG] Calling initialize with config...")
+        try await initialize(with: config)
+        NSLog("[PADetect DEBUG] Initialize completed successfully")
+    }
+    
+    /// 加载默认配置文件
+    public func loadDefaultConfigs() async throws {
+        let bundle = Bundle.main
+        
+        if let configPath = bundle.path(forResource: "config", ofType: "json") {
+            try await loadConfig(from: configPath)
+        }
+        
+        if let serverConfigPath = bundle.path(forResource: "serverConfig", ofType: "json") {
+            try await loadServerConfig(from: serverConfigPath)
+        }
+    }
+}
+
+// MARK: - Alert Type Extensions
+
+extension PAAlertType {
+    
+    public var localizedDescription: String {
+        switch self {
+        case .phone:
+            return "手机检测告警"
+        case .peep:
+            return "偷窥风险告警"
+        case .nobody:
+            return "无人办公告警"
+        case .occlude:
+            return "摄像头遮挡告警"
+        case .noConnect:
+            return "摄像头连接异常告警"
+        case .suspect:
+            return "可疑行为告警"
+        @unknown default:
+            return "未知告警类型"
+        }
+    }
+    
+    public var iconName: String {
+        switch self {
+        case .phone:
+            return "iphone"
+        case .peep:
+            return "eye.slash"
+        case .nobody:
+            return "person.slash"
+        case .occlude:
+            return "video.slash"
+        case .noConnect:
+            return "wifi.slash"
+        case .suspect:
+            return "exclamationmark.triangle"
+        @unknown default:
+            return "questionmark"
+        }
+    }
+}
+
+// MARK: - Detection Status Extensions
+
+extension PADetectionStatus {
+    
+    public var localizedDescription: String {
+        switch self {
+        case .stopped:
+            return "已停止"
+        case .running:
+            return "运行中"
+        case .error:
+            return "错误"
+        @unknown default:
+            return "未知状态"
+        }
+    }
+    
+    public var color: String {
+        switch self {
+        case .stopped:
+            return "gray"
+        case .running:
+            return "green"
+        case .error:
+            return "red"
+        @unknown default:
+            return "gray"
+        }
+    }
+}
