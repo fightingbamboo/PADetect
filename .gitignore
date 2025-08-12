@@ -3,3 +3,4 @@ doc
 build
 cache
 output.log
+libPADetectCore.a
