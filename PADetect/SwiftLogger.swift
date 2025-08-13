@@ -24,7 +24,8 @@ public class SwiftLogger {
     
     /// 私有初始化器
     private init() {
-        //self.logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.padetect.app", category: "PADetect")
+        // 初始化系统日志
+        self.logger = Logger(subsystem: "com.padetect.app", category: "PADetect")
         
         // 设置日志目录
         let projectPath = "/Users/bamboo/Documents/PADetect"

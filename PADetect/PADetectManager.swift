@@ -266,19 +266,7 @@ public class PADetectManager: ObservableObject {
         self.currentAlert = nil
     }
     
-    /// 检测单张图像
-    public func detectImage(_ image: CGImage) async throws -> PADetectionResult {
-        return try await withCheckedThrowingContinuation { continuation in
-            var error: NSError?
-            let result = bridge.detect(in: image, error: &error)
-            
-            if let error = error {
-                continuation.resume(throwing: error)
-            } else {
-                continuation.resume(returning: result)
-            }
-        }
-    }
+
     
     /// 设置检测阈值
     public func setDetectionThreshold(_ threshold: Float, for alertType: PAAlertType) {

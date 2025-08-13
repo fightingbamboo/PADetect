@@ -398,43 +398,7 @@ typedef NS_ENUM(NSInteger, PADetectErrorCode) {
     }
 }
 
-#pragma mark - Manual Detection
 
-- (PADetectionResult)detectInImage:(CVPixelBufferRef)pixelBuffer error:(NSError **)error {
-    PADetectionResult result = {0, 0, 0, 0};
-    
-    // TODO: 实现CVPixelBuffer到OpenCV Mat的转换
-    // 需要配置OpenCV库后实现
-    if (error) {
-        *error = [NSError errorWithDomain:PADetectErrorDomain
-                                     code:PADetectErrorCodeDetectionFailed
-                                 userInfo:@{NSLocalizedDescriptionKey: @"Manual detection not implemented yet"}];
-    }
-    
-    return result;
-}
-
-- (PADetectionResult)detectInCGImage:(CGImageRef)image error:(NSError **)error {
-    PADetectionResult result = {0, 0, 0, 0};
-    
-    if (!image) {
-        if (error) {
-            *error = [NSError errorWithDomain:PADetectErrorDomain
-                                         code:PADetectErrorCodeInvalidParameter
-                                     userInfo:@{NSLocalizedDescriptionKey: @"Invalid CGImage"}];
-        }
-        return result;
-    }
-    
-    // TODO: 实现CGImage到OpenCV Mat的转换
-    if (error) {
-        *error = [NSError errorWithDomain:PADetectErrorDomain
-                                     code:PADetectErrorCodeDetectionFailed
-                                 userInfo:@{NSLocalizedDescriptionKey: @"Manual detection not implemented yet"}];
-    }
-    
-    return result;
-}
 
 #pragma mark - Parameter Configuration
 

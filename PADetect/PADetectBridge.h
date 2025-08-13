@@ -85,9 +85,7 @@ typedef void(^PAStatusCallback)(PADetectionStatus status, NSString * _Nullable e
 - (void)setAlertCallback:(PAAlertCallback _Nullable)callback;
 - (void)setStatusCallback:(PAStatusCallback _Nullable)callback;
 
-// 手动检测单帧图像
-- (PADetectionResult)detectInImage:(CVPixelBufferRef)pixelBuffer error:(NSError **)error;
-- (PADetectionResult)detectInCGImage:(CGImageRef)image error:(NSError **)error;
+
 
 // 参数配置
 - (void)setDetectionThreshold:(float)threshold forType:(PAAlertType)alertType;
