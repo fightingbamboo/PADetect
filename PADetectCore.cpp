@@ -257,25 +257,52 @@ void PADetectCore::setAlertEnabled(bool enabled, AlertType alertType) {
         return;
     }
     
-    // 根据告警类型设置对应的开关
+    // 直接调用对应的单独setter方法
     switch (alertType) {
         case AlertType::Phone:
-            imageProcessor_->setAlertEnables(enabled, false, false, false, false);
+            imageProcessor_->setAlertPhoneEnabled(enabled);
             break;
         case AlertType::Peep:
-             imageProcessor_->setAlertEnables(false, enabled, false, false, false);
-             break;
+            imageProcessor_->setAlertPeepEnabled(enabled);
+            break;
         case AlertType::Suspect:
-            imageProcessor_->setAlertEnables(false, false, enabled, false, false);
+            imageProcessor_->setAlertSuspectEnabled(enabled);
             break;
         case AlertType::Nobody:
-            imageProcessor_->setAlertEnables(false, false, false, enabled, false);
+            imageProcessor_->setAlertNobodyEnabled(enabled);
             break;
         case AlertType::Occlude:
-            imageProcessor_->setAlertEnables(false, false, false, false, enabled);
+            imageProcessor_->setAlertOccludeEnabled(enabled);
+            break;
+        case AlertType::NoConnect:
+            imageProcessor_->setAlertNoconnectEnabled(enabled);
             break;
         default:
             break;
+    }
+}
+
+bool PADetectCore::getAlertEnabled(AlertType alertType) const {
+    if (!imageProcessor_) {
+        return false;
+    }
+    
+    // 根据告警类型获取对应的开关状态
+    switch (alertType) {
+        case AlertType::Phone:
+            return imageProcessor_->getAlertPhoneEnabled();
+        case AlertType::Peep:
+            return imageProcessor_->getAlertPeepEnabled();
+        case AlertType::Suspect:
+            return imageProcessor_->getAlertSuspectEnabled();
+        case AlertType::Nobody:
+            return imageProcessor_->getAlertNobodyEnabled();
+        case AlertType::Occlude:
+            return imageProcessor_->getAlertOccludeEnabled();
+        case AlertType::NoConnect:
+            return imageProcessor_->getAlertNoconnectEnabled();
+        default:
+            return false;
     }
 }
 

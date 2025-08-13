@@ -75,6 +75,7 @@ typedef void(^PAStatusCallback)(PADetectionStatus status, NSString * _Nullable e
 
 // 告警设置
 - (void)setAlertEnabled:(BOOL)enabled forType:(PAAlertType)alertType;
+- (BOOL)getAlertEnabledForType:(PAAlertType)alertType;
 - (void)showAlertForType:(PAAlertType)alertType;
 - (void)hideAlert;
 - (BOOL)isAlertShowing;

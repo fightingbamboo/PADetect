@@ -248,6 +248,13 @@ typedef NS_ENUM(NSInteger, PADetectErrorCode) {
     }
 }
 
+- (BOOL)getAlertEnabledForType:(PAAlertType)alertType {
+    if (_core) {
+        return _core->getAlertEnabled(static_cast<::AlertType>(alertType));
+    }
+    return NO;
+}
+
 - (void)showAlertForType:(PAAlertType)alertType {
     if (_core) {
         _core->showAlert(static_cast<::AlertType>(alertType));

@@ -249,6 +249,11 @@ public class PADetectManager: ObservableObject {
         bridge.setAlertEnabled(enabled, for: alertType)
     }
     
+    /// 获取告警开关状态
+    public func getAlertEnabled(for alertType: PAAlertType) -> Bool {
+        return bridge.getAlertEnabled(for: alertType)
+    }
+    
     /// 显示告警
     public func showAlert(for alertType: PAAlertType) {
         bridge.showAlert(for: alertType)

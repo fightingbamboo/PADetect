@@ -80,6 +80,7 @@ public:
     
     // 告警设置
     void setAlertEnabled(bool enabled, AlertType alertType);
+    bool getAlertEnabled(AlertType alertType) const;
     void showAlert(AlertType alertType);
     void hideAlert();
     bool isAlertShowing() const;

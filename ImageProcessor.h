@@ -53,6 +53,22 @@ public:
     void setTestParam(const std::shared_ptr<MyMeta>& meta);
     bool isCameraOccludedByTraditional(cv::InputArray frame);
     
+    // 获取告警开关状态的方法
+    bool getAlertPhoneEnabled() const { return m_alertPhoneEnable; }
+    bool getAlertPeepEnabled() const { return m_alertPeepEnable; }
+    bool getAlertSuspectEnabled() const { return m_alertSuspectEnable; }
+    bool getAlertNobodyEnabled() const { return m_alertNobodyEnable; }
+    bool getAlertOccludeEnabled() const { return m_alertOcculeEnable; }
+    bool getAlertNoconnectEnabled() const { return m_alertNoconnectEnable; }
+    
+    // 设置单个告警开关状态的方法
+    void setAlertPhoneEnabled(bool enabled) { m_alertPhoneEnable = enabled; }
+    void setAlertPeepEnabled(bool enabled) { m_alertPeepEnable = enabled; }
+    void setAlertSuspectEnabled(bool enabled) { m_alertSuspectEnable = enabled; }
+    void setAlertNobodyEnabled(bool enabled) { m_alertNobodyEnable = enabled; }
+    void setAlertOccludeEnabled(bool enabled) { m_alertOcculeEnable = enabled; }
+    void setAlertNoconnectEnabled(bool enabled) { m_alertNoconnectEnable = enabled; }
+    
     // 锁屏相关方法
     void setNoFaceLockEnabled(bool enabled);
     void setNoFaceLockTimeout(int32_t timeoutMs);

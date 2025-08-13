@@ -515,6 +515,17 @@ struct PADetectView: View {
                 NSLog("[PADetect DEBUG] loadDefaultConfigs completed")
                 await MainActor.run {
                     isInitialized = true
+                    
+                    // 从配置文件中读取告警开关的实际状态并同步到UI
+                    phoneAlertEnabled = detectManager.getAlertEnabled(for: .phone)
+                    peepAlertEnabled = detectManager.getAlertEnabled(for: .peep)
+                    nobodyAlertEnabled = detectManager.getAlertEnabled(for: .nobody)
+                    occludeAlertEnabled = detectManager.getAlertEnabled(for: .occlude)
+                    noConnectAlertEnabled = detectManager.getAlertEnabled(for: .noConnect)
+                    suspectAlertEnabled = detectManager.getAlertEnabled(for: .suspect)
+                    
+                    NSLog("[PADetect DEBUG] Alert states synced from config: phone=\(phoneAlertEnabled), peep=\(peepAlertEnabled), nobody=\(nobodyAlertEnabled), occlude=\(occludeAlertEnabled), noConnect=\(noConnectAlertEnabled), suspect=\(suspectAlertEnabled)")
+                    
                     alertMessage = "检测器初始化成功"
                     showingAlert = true
                     NSLog("[PADetect DEBUG] Initialization successful")
