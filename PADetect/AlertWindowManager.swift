@@ -322,20 +322,20 @@ class AlertWindowManager: ObservableObject {
 
 extension PAAlertType {
     var alertMode: AlertMode {
-        switch self {
-        case .phone:
+        switch self.rawValue {
+        case 0: // PAAlertTypePhone
             return .phone
-        case .peep:
+        case 1: // PAAlertTypePeep
             return .peep
-        case .nobody:
+        case 2: // PAAlertTypeNobody
             return .nobody
-        case .occlude:
+        case 3: // PAAlertTypeOcclude
             return .occlude
-        case .noConnect:
+        case 4: // PAAlertTypeNoConnect
             return .noConnect
-        case .suspect:
+        case 5: // PAAlertTypeSuspect
             return .suspect
-        @unknown default:
+        default:
             return .phone
         }
     }

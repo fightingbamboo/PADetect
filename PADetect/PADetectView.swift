@@ -108,7 +108,7 @@ struct PADetectView: View {
                     .fill(statusColor)
                     .frame(width: 12, height: 12)
                 
-                Text(detectManager.detectionStatus.localizedDescription)
+                Text(detectManager.detectionStatus.description)
                     .font(.caption)
                     .fontWeight(.medium)
             }
@@ -138,7 +138,7 @@ struct PADetectView: View {
             
             StatusCard(
                 title: "当前告警",
-                value: detectManager.currentAlert?.localizedDescription ?? "无",
+                value: detectManager.currentAlert?.alertMode.localizedDescription ?? "无",
                 icon: "checkmark.circle",
                 color: detectManager.currentAlert != nil ? .red : .green
             )
@@ -252,31 +252,31 @@ struct PADetectView: View {
                 .fontWeight(.medium)
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
-                AlertToggle(title: "手机检测", isOn: $phoneAlertEnabled, alertType: PAAlertType.phone)
-                AlertToggle(title: "偷窥检测", isOn: $peepAlertEnabled, alertType: PAAlertType.peep)
-                AlertToggle(title: "无人检测", isOn: $nobodyAlertEnabled, alertType: PAAlertType.nobody)
-                AlertToggle(title: "遮挡检测", isOn: $occludeAlertEnabled, alertType: PAAlertType.occlude)
-                AlertToggle(title: "连接检测", isOn: $noConnectAlertEnabled, alertType: PAAlertType.noConnect)
-                AlertToggle(title: "可疑行为", isOn: $suspectAlertEnabled, alertType: PAAlertType.suspect)
+                AlertToggle(title: "手机检测", isOn: $phoneAlertEnabled, alertType: PAAlertType(rawValue: 0)!)
+                AlertToggle(title: "偷窥检测", isOn: $peepAlertEnabled, alertType: PAAlertType(rawValue: 1)!)
+                AlertToggle(title: "无人检测", isOn: $nobodyAlertEnabled, alertType: PAAlertType(rawValue: 2)!)
+                AlertToggle(title: "遮挡检测", isOn: $occludeAlertEnabled, alertType: PAAlertType(rawValue: 3)!)
+                AlertToggle(title: "连接检测", isOn: $noConnectAlertEnabled, alertType: PAAlertType(rawValue: 4)!)
+                AlertToggle(title: "可疑行为", isOn: $suspectAlertEnabled, alertType: PAAlertType(rawValue: 5)!)
             }
         }
         .onChange(of: phoneAlertEnabled) { enabled in
-            detectManager.setAlertEnabled(enabled, for: PAAlertType.phone)
+            detectManager.setAlertEnabled(enabled, for: PAAlertType(rawValue: 0)!)
         }
         .onChange(of: peepAlertEnabled) { enabled in
-            detectManager.setAlertEnabled(enabled, for: PAAlertType.peep)
+            detectManager.setAlertEnabled(enabled, for: PAAlertType(rawValue: 1)!)
         }
         .onChange(of: nobodyAlertEnabled) { enabled in
-            detectManager.setAlertEnabled(enabled, for: PAAlertType.nobody)
+            detectManager.setAlertEnabled(enabled, for: PAAlertType(rawValue: 2)!)
         }
         .onChange(of: occludeAlertEnabled) { enabled in
-            detectManager.setAlertEnabled(enabled, for: PAAlertType.occlude)
+            detectManager.setAlertEnabled(enabled, for: PAAlertType(rawValue: 3)!)
         }
         .onChange(of: noConnectAlertEnabled) { enabled in
-            detectManager.setAlertEnabled(enabled, for: PAAlertType.noConnect)
+            detectManager.setAlertEnabled(enabled, for: PAAlertType(rawValue: 4)!)
         }
         .onChange(of: suspectAlertEnabled) { enabled in
-            detectManager.setAlertEnabled(enabled, for: PAAlertType.suspect)
+            detectManager.setAlertEnabled(enabled, for: PAAlertType(rawValue: 5)!)
         }
     }
     
@@ -596,10 +596,17 @@ struct PADetectView: View {
     
     private func testAlertPopup() {
         // 测试多显示器全屏弹窗
-        let alertTypes: [PAAlertType] = [.phone, .peep, .nobody, .occlude, .noConnect, .suspect]
-        let randomType = alertTypes.randomElement() ?? .phone
+        let alertTypes: [PAAlertType] = [
+            PAAlertType(rawValue: 0)!, // phone
+            PAAlertType(rawValue: 1)!, // peep
+            PAAlertType(rawValue: 2)!, // nobody
+            PAAlertType(rawValue: 3)!, // occlude
+            PAAlertType(rawValue: 4)!, // noConnect
+            PAAlertType(rawValue: 5)!  // suspect
+        ]
+        let randomType = alertTypes.randomElement() ?? PAAlertType(rawValue: 0)!
         
-        NSLog("[PADetect DEBUG] 测试告警弹窗，类型: \(randomType.localizedDescription)")
+        NSLog("[PADetect DEBUG] 测试告警弹窗，类型: \(randomType.alertMode.localizedDescription)")
         
         // 显示弹窗3秒后自动隐藏
         detectManager.showAlert(for: randomType)
@@ -610,7 +617,7 @@ struct PADetectView: View {
         }
         
         // 显示提示信息
-        alertMessage = "已触发\(randomType.localizedDescription)测试，弹窗将在3秒后自动关闭"
+        alertMessage = "已触发\(randomType.alertMode.localizedDescription)测试，弹窗将在3秒后自动关闭"
         showingAlert = true
     }
     
@@ -746,18 +753,18 @@ struct AlertToggle: View {
     let alertType: PAAlertType
     
     private func getIconName(for alertType: PAAlertType) -> String {
-        switch alertType {
-        case PAAlertType.phone:
+        switch alertType.rawValue {
+        case 0: // PAAlertTypePhone
             return "iphone"
-        case PAAlertType.peep:
+        case 1: // PAAlertTypePeep
             return "eye.slash"
-        case PAAlertType.nobody:
+        case 2: // PAAlertTypeNobody
             return "person.slash"
-        case PAAlertType.occlude:
+        case 3: // PAAlertTypeOcclude
             return "video.slash"
-        case PAAlertType.noConnect:
+        case 4: // PAAlertTypeNoConnect
             return "wifi.slash"
-        case PAAlertType.suspect:
+        case 5: // PAAlertTypeSuspect
             return "exclamationmark.triangle"
         default:
             return "questionmark"

@@ -23,7 +23,7 @@ public class PADetectManager: ObservableObject {
     // MARK: - Published Properties
     
     @Published public var isDetectionRunning: Bool = false
-    @Published public var detectionStatus: PADetectionStatus = .stopped
+    @Published public var detectionStatus: PADetectionStatus = PADetectionStatus(rawValue: 0)!
     @Published public var lastDetectionResult: PADetectionResult = PADetectionResult(lenCount: 0, phoneCount: 0, faceCount: 0, suspectedCount: 0)
     @Published public var currentAlert: PAAlertType? = nil
     @Published public var errorMessage: String? = nil
@@ -33,6 +33,7 @@ public class PADetectManager: ObservableObject {
     
     private let bridge: PADetectBridge
     private var cancellables = Set<AnyCancellable>()
+    private let alertWindowManager = AlertWindowManager.shared
     
     // MARK: - Configuration
     
@@ -261,7 +262,8 @@ public class PADetectManager: ObservableObject {
     
     /// 隐藏告警
     public func hideAlert() {
-        bridge.hideAlert()
+        alertWindowManager.hideAlert()
+        self.currentAlert = nil
     }
     
     /// 检测单张图像
@@ -349,7 +351,10 @@ public class PADetectManager: ObservableObject {
         // 设置告警回调
         bridge.setAlertCallback { [weak self] (alertType: PAAlertType) in
             Task { @MainActor in
-                self?.currentAlert = alertType
+                guard let self = self else { return }
+                self.currentAlert = alertType
+                let alertMode = alertType.toAlertMode()
+                self.alertWindowManager.showAlert(mode: alertMode)
             }
         }
         
@@ -357,7 +362,7 @@ public class PADetectManager: ObservableObject {
         bridge.setStatusCallback { [weak self] (status: PADetectionStatus, errorMessage: String?) in
             Task { @MainActor in
                 self?.detectionStatus = status
-                self?.isDetectionRunning = (status == .running)
+                self?.isDetectionRunning = (status.rawValue == 1)
                 self?.errorMessage = errorMessage
             }
         }
@@ -432,40 +437,53 @@ extension PADetectManager {
 extension PAAlertType {
     
     public var localizedDescription: String {
-        switch self {
-        case .phone:
+        switch self.rawValue {
+        case 0: // PAAlertTypePhone
             return "手机检测告警"
-        case .peep:
+        case 1: // PAAlertTypePeep
             return "偷窥风险告警"
-        case .nobody:
+        case 2: // PAAlertTypeNobody
             return "无人办公告警"
-        case .occlude:
+        case 3: // PAAlertTypeOcclude
             return "摄像头遮挡告警"
-        case .noConnect:
+        case 4: // PAAlertTypeNoConnect
             return "摄像头连接异常告警"
-        case .suspect:
+        case 5: // PAAlertTypeSuspect
             return "可疑行为告警"
-        @unknown default:
+        default:
             return "未知告警类型"
         }
     }
     
     public var iconName: String {
-        switch self {
-        case .phone:
+        switch self.rawValue {
+        case 0: // PAAlertTypePhone
             return "iphone"
-        case .peep:
+        case 1: // PAAlertTypePeep
             return "eye.slash"
-        case .nobody:
+        case 2: // PAAlertTypeNobody
             return "person.slash"
-        case .occlude:
+        case 3: // PAAlertTypeOcclude
             return "video.slash"
-        case .noConnect:
+        case 4: // PAAlertTypeNoConnect
             return "wifi.slash"
-        case .suspect:
+        case 5: // PAAlertTypeSuspect
             return "exclamationmark.triangle"
-        @unknown default:
+        default:
             return "questionmark"
+        }
+    }
+
+    func toAlertMode() -> AlertMode {
+        switch self.rawValue {
+        case 0: return .phone
+        case 1: return .peep
+        case 2: return .nobody
+        case 3: return .occlude
+        case 4: return .noConnect
+        case 5: return .suspect
+        default:
+            fatalError("Unsupported PAAlertType: \(self)")
         }
     }
 }
@@ -474,28 +492,28 @@ extension PAAlertType {
 
 extension PADetectionStatus {
     
-    public var localizedDescription: String {
-        switch self {
-        case .stopped:
+    public var description: String {
+        switch self.rawValue {
+        case 0: // PADetectionStatusStopped
             return "已停止"
-        case .running:
+        case 1: // PADetectionStatusRunning
             return "运行中"
-        case .error:
+        case 2: // PADetectionStatusError
             return "错误"
-        @unknown default:
+        default:
             return "未知状态"
         }
     }
     
     public var color: String {
-        switch self {
-        case .stopped:
+        switch self.rawValue {
+        case 0: // PADetectionStatusStopped
             return "gray"
-        case .running:
+        case 1: // PADetectionStatusRunning
             return "green"
-        case .error:
+        case 2: // PADetectionStatusError
             return "red"
-        @unknown default:
+        default:
             return "gray"
         }
     }

@@ -5,12 +5,17 @@
 CXX = clang++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2
 
-# 架构设置 - 支持Apple Silicon
-UNAME_M := $(shell uname -m)
-ifeq ($(UNAME_M),arm64)
-    CXXFLAGS += -arch arm64
-else
-    CXXFLAGS += -arch x86_64
+# 架构设置 - 支持多架构编译
+# 可以通过 ARCHS 参数指定架构，例如：
+# make ARCHS="x86_64 arm64"  # 编译通用二进制
+# make ARCHS="arm64"         # 仅编译arm64
+# make ARCHS="x86_64"        # 仅编译x86_64
+ARCHS ?= $(shell uname -m)
+
+# 添加架构标志到编译选项
+ifneq ($(ARCHS),)
+    ARCH_FLAGS = $(addprefix -arch ,$(ARCHS))
+    CXXFLAGS += $(ARCH_FLAGS)
 endif
 
 # C++17 filesystem 支持
@@ -154,6 +159,17 @@ endif
 # 目标静态库
 TARGET = libPADetectCore.a
 
+# 通用二进制目标（同时编译x86_64和arm64）
+universal: ARCHS = x86_64 arm64
+universal: $(TARGET)
+
+# 单独架构目标
+x86_64: ARCHS = x86_64
+x86_64: $(TARGET)
+
+arm64: ARCHS = arm64
+arm64: $(TARGET)
+
 # 默认目标
 all: $(TARGET)
 
@@ -231,6 +247,9 @@ release: $(TARGET)
 help:
 	@echo "Available targets:"
 	@echo "  all        - Build the project (default)"
+	@echo "  universal  - Build universal binary (x86_64 + arm64)"
+	@echo "  x86_64     - Build for x86_64 architecture only"
+	@echo "  arm64      - Build for arm64 architecture only"
 	@echo "  clean      - Remove object files and executable"
 	@echo "  rebuild    - Clean and build"
 	@echo "  debug      - Build debug version"
@@ -239,9 +258,19 @@ help:
 	@echo "  install-deps-macos - Install dependencies on macOS"
 	@echo "  install-deps-linux - Install dependencies on Linux"
 	@echo "  help       - Show this help"
+	@echo ""
+	@echo "Architecture options:"
+	@echo "  ARCHS=\"x86_64 arm64\" - Compile for multiple architectures"
+	@echo "  ARCHS=\"arm64\"        - Compile for arm64 only"
+	@echo "  ARCHS=\"x86_64\"       - Compile for x86_64 only"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make universal          # Build universal binary"
+	@echo "  make ARCHS=\"x86_64 arm64\" # Same as universal"
+	@echo "  make ARCHS=\"arm64\"      # Build for Apple Silicon only"
 
 # 声明伪目标
-.PHONY: all clean rebuild debug release check-deps install-deps-macos install-deps-linux help
+.PHONY: all universal x86_64 arm64 clean rebuild debug release check-deps install-deps-macos install-deps-linux help
 
 # 依赖关系 (可选，用于头文件变化时重新编译)
 # 只为实际编译的源文件生成依赖
