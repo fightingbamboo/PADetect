@@ -12,6 +12,7 @@
 		4D1E83C82E488D29009811B2 /* PADetectBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4D1E83C22E488D29009811B2 /* PADetectBridge.mm */; };
 		4D1E83C92E488D29009811B2 /* PADetectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1E83C42E488D29009811B2 /* PADetectView.swift */; };
 		4D1E83CD2E488F00009811B2 /* mnn_model in Resources */ = {isa = PBXBuildFile; fileRef = 4D1E83CE2E488F00009811B2 /* mnn_model */; };
+		E687426BD76547B3AD2C11D6 /* AlertWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E687426BD76547B3AD2C11D7 /* AlertWindowManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,6 +39,7 @@
 		4D1E83C22E488D29009811B2 /* PADetectBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = PADetectBridge.mm; sourceTree = "<group>"; };
 		4D1E83C32E488D29009811B2 /* PADetectManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PADetectManager.swift; sourceTree = "<group>"; };
 		4D1E83C42E488D29009811B2 /* PADetectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PADetectView.swift; sourceTree = "<group>"; };
+		E687426BD76547B3AD2C11D7 /* AlertWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertWindowManager.swift; sourceTree = "<group>"; };
 		4D1E83CA2E488D2C009811B2 /* PADetect-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PADetect-Bridging-Header.h"; sourceTree = "<group>"; };
 		4D1E83CE2E488F00009811B2 /* mnn_model */ = {isa = PBXFileReference; lastKnownFileType = folder; path = mnn_model; sourceTree = "<group>"; };
 		4D9CFAB12E487497005D942A /* PADetect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PADetect.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -103,6 +105,7 @@
 				4D1E83C22E488D29009811B2 /* PADetectBridge.mm */,
 				4D1E83C32E488D29009811B2 /* PADetectManager.swift */,
 				4D1E83C42E488D29009811B2 /* PADetectView.swift */,
+				E687426BD76547B3AD2C11D7 /* AlertWindowManager.swift */,
 				4D1E83CA2E488D2C009811B2 /* PADetect-Bridging-Header.h */,
 			);
 			path = PADetect;
@@ -265,6 +268,7 @@
 				4D1E83C72E488D29009811B2 /* PADetectApp.swift in Sources */,
 				4D1E83C82E488D29009811B2 /* PADetectBridge.mm in Sources */,
 				4D1E83C92E488D29009811B2 /* PADetectView.swift in Sources */,
+				E687426BD76547B3AD2C11D6 /* AlertWindowManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -306,6 +310,7 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_ENABLE_CODE_COVERAGE = NO;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;

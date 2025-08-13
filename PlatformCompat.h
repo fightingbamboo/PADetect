@@ -196,9 +196,7 @@ namespace PlatformCompat {
     
     // 文件路径处理
     std::string GetProgramDataPath();
-    
-    // 摄像头设备枚举
-    std::vector<std::string> GetCameraDeviceNames(std::vector<int>& deviceIDs);
+
     
     // 窗口消息处理（仅在需要时使用）
     void ProcessMessages();

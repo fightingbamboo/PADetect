@@ -4,3 +4,7 @@ build
 cache
 output.log
 libPADetectCore.a
+logs
+log
+default.profraw
+rules

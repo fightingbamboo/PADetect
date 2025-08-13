@@ -63,6 +63,10 @@ struct PADetectView: View {
                 NSLog("[PADetect DEBUG] PADetectView onAppear called")
                 refreshCameraList()
                 initializeDetector()
+                setupNotificationObservers()
+            }
+            .onDisappear {
+                removeNotificationObservers()
             }
             .alert("提示", isPresented: $showingAlert) {
                 Button("确定") { }
@@ -205,9 +209,15 @@ struct PADetectView: View {
             .disabled(!isInitialized || detectManager.cameraPermissionStatus != .authorized)
             
             Button("重新初始化") {
-                initializeDetector()
-            }
-            .buttonStyle(.bordered)
+                    initializeDetector()
+                }
+                .buttonStyle(.bordered)
+                
+                Button("测试告警弹窗") {
+                    testAlertPopup()
+                }
+                .buttonStyle(.bordered)
+                .foregroundColor(.orange)
         }
     }
     
@@ -226,7 +236,7 @@ struct PADetectView: View {
             cameraSettingsView
             
             // 测试模式设置
-            testModeSettingsView
+//            testModeSettingsView
         }
         .padding()
         .background(Color(.controlBackgroundColor))
@@ -572,6 +582,93 @@ struct PADetectView: View {
             }
         }
     }
+    
+    private func testAlertPopup() {
+        // 测试多显示器全屏弹窗
+        let alertTypes: [PAAlertType] = [.phone, .peep, .nobody, .occlude, .noConnect, .suspect]
+        let randomType = alertTypes.randomElement() ?? .phone
+        
+        NSLog("[PADetect DEBUG] 测试告警弹窗，类型: \(randomType.localizedDescription)")
+        
+        // 显示弹窗3秒后自动隐藏
+        detectManager.showAlert(for: randomType)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            self.detectManager.hideAlert()
+            NSLog("[PADetect DEBUG] 自动隐藏告警弹窗")
+        }
+        
+        // 显示提示信息
+        alertMessage = "已触发\(randomType.localizedDescription)测试，弹窗将在3秒后自动关闭"
+        showingAlert = true
+    }
+    
+    // MARK: - Notification Observers
+    
+    private func setupNotificationObservers() {
+         // 监听来自PADetectBridge的显示全屏弹窗通知
+         NotificationCenter.default.addObserver(
+             forName: NSNotification.Name("ShowFullScreenAlert"),
+             object: nil,
+             queue: .main
+         ) { notification in
+             NSLog("[PADetect DEBUG] 收到显示全屏弹窗通知")
+             
+             if let userInfo = notification.userInfo,
+                let alertTypeRaw = userInfo["alertType"] as? Int,
+                let version = userInfo["version"] as? String {
+                 
+                 // 将整数转换为AlertMode
+                 let mode: AlertMode
+                 switch alertTypeRaw {
+                 case 0: mode = .phone
+                 case 1: mode = .peep
+                 case 2: mode = .nobody
+                 case 3: mode = .occlude
+                 case 4: mode = .noConnect
+                 case 5: mode = .suspect
+                 default: mode = .phone
+                 }
+                 
+                 NSLog("[PADetect DEBUG] 弹窗类型: \(mode), 版本: \(version)")
+                 AlertWindowManager.shared.showAlert(mode: mode, version: version)
+             }
+         }
+         
+         // 监听来自PADetectBridge的隐藏全屏弹窗通知
+         NotificationCenter.default.addObserver(
+             forName: NSNotification.Name("HideFullScreenAlert"),
+             object: nil,
+             queue: .main
+         ) { notification in
+             NSLog("[PADetect DEBUG] 收到隐藏全屏弹窗通知")
+             AlertWindowManager.shared.hideAlert()
+         }
+         
+         // 监听AlertWindowManager的状态通知（用于调试）
+         NotificationCenter.default.addObserver(
+             forName: NSNotification.Name("PADetectAlertDidShow"),
+             object: nil,
+             queue: .main
+         ) { notification in
+             NSLog("[PADetect DEBUG] 全屏弹窗已显示")
+         }
+         
+         NotificationCenter.default.addObserver(
+             forName: NSNotification.Name("PADetectAlertDidHide"),
+             object: nil,
+             queue: .main
+         ) { notification in
+             NSLog("[PADetect DEBUG] 全屏弹窗已隐藏")
+         }
+     }
+    
+    private func removeNotificationObservers() {
+         NotificationCenter.default.removeObserver(self, name: NSNotification.Name("ShowFullScreenAlert"), object: nil)
+         NotificationCenter.default.removeObserver(self, name: NSNotification.Name("HideFullScreenAlert"), object: nil)
+         NotificationCenter.default.removeObserver(self, name: NSNotification.Name("PADetectAlertDidShow"), object: nil)
+         NotificationCenter.default.removeObserver(self, name: NSNotification.Name("PADetectAlertDidHide"), object: nil)
+     }
 }
 
 // MARK: - Supporting Views

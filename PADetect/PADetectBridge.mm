@@ -252,12 +252,32 @@ typedef NS_ENUM(NSInteger, PADetectErrorCode) {
     if (_core) {
         _core->showAlert(static_cast<::AlertType>(alertType));
     }
+    
+    // 通过通知机制通知Swift层显示全屏弹窗
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSString *version = [self getVersion];
+        NSDictionary *userInfo = @{
+            @"alertType": @(alertType),
+            @"version": version
+        };
+        
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"ShowFullScreenAlert"
+                                                            object:nil
+                                                          userInfo:userInfo];
+    });
 }
 
 - (void)hideAlert {
     if (_core) {
         _core->hideAlert();
     }
+    
+    // 通过通知机制通知Swift层隐藏全屏弹窗
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"HideFullScreenAlert"
+                                                            object:nil
+                                                          userInfo:nil];
+    });
 }
 
 - (BOOL)isAlertShowing {

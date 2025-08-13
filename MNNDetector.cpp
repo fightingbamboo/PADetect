@@ -24,14 +24,23 @@ MNNDetector::MNNDetector(const std::string& model_path,
 
     // 创建缓存目录
     printf("[MNNDetector DEBUG] Creating cache directory...\n");
-    const std::string cacheDir = "cache/gpu_cache/";
-    if (!std::filesystem::exists(cacheDir)) {
-        std::filesystem::create_directories(cacheDir);
+    
+    // 使用用户主目录下的缓存目录，避免只读文件系统问题
+    std::string homeDir = std::getenv("HOME") ? std::getenv("HOME") : "/tmp";
+    const std::string cacheDir = homeDir + "/.padetect_cache/gpu_cache/";
+    
+    try {
+        if (!std::filesystem::exists(cacheDir)) {
+            std::filesystem::create_directories(cacheDir);
+        }
+        auto cachePath = std::filesystem::path(cacheDir) / "cachefile";
+        std::string cacheStr = cachePath.string();
+        interpreter->setCacheFile(cacheStr.c_str());
+        printf("[MNNDetector DEBUG] Cache directory created and set at: %s\n", cacheDir.c_str());
+    } catch (const std::filesystem::filesystem_error& e) {
+        printf("[MNNDetector WARNING] Failed to create cache directory: %s, continuing without cache\n", e.what());
+        // 继续执行，不使用缓存
     }
-    auto cachePath = std::filesystem::path(cacheDir) / "cachefile";
-    std::string cacheStr = cachePath.string();
-    interpreter->setCacheFile(cacheStr.c_str());
-    printf("[MNNDetector DEBUG] Cache directory created and set\n");
 
     // 2. 配置会话，使用OpenCL加速
     printf("[MNNDetector DEBUG] Configuring OpenCL session...\n");

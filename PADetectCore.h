@@ -188,7 +188,7 @@ private:
     std::string modelPath_;
     
     // 私有成员变量
-    static constexpr const char* CLIENT_VERSION = "1.0.7";
+    static constexpr const char* CLIENT_VERSION = "1.0.0";
     static constexpr const char* UPDATE_FILE_PATH = "update.json";
     static constexpr uint64_t SUPPORT_END_TIME = 1756655999;
 };

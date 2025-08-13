@@ -3,13 +3,12 @@
 #include "MyLogger.hpp"
 #include "ConfigParser.h"
 #include "KeyVerifier.h"
-#include "HttpClient.h"
 #include "MyMeta.h"
 #include "MyWindMsgBox.h"
 #include "SingletonApp.h"
-#include "PicFileUploader.h"
 #include "ImageProcessor.h"
 #include "MNNDetector.h"
+#include "PicFileUploader.h"
 
 #include <memory>
 #include <functional>
@@ -19,7 +18,6 @@
 #include <thread>
 #include <sys/stat.h>
 #include <unistd.h>
-// #include <opencv2/opencv.hpp>
 
 // 常量定义
 static constexpr const char* CLIENT_VERSION = "1.0.7";
@@ -74,36 +72,52 @@ bool PADetectCore::initialize() {
         return true;
     }
     
-    // 1. 重定向stdout和stderr到文件
-    freopen("output.log", "w", stdout);
-    freopen("error.log", "w", stderr);
+    // 1. 创建log目录并重定向stdout和stderr到文件
+    system("mkdir -p /Users/bamboo/Documents/PADetect/logs");
+    freopen("/Users/bamboo/Documents/PADetect/logs/output.log", "w", stdout);
+    freopen("/Users/bamboo/Documents/PADetect/logs/error.log", "w", stderr);
+    
+    std::cerr << "[DEBUG] Starting PADetectCore initialization..." << std::endl;
     
     // 2. 首先初始化日志系统
+    std::cerr << "[DEBUG] Initializing logger..." << std::endl;
     if (!initializeLogger()) {
+        std::cerr << "[ERROR] Logger initialization failed" << std::endl;
         notifyStatusChange(DetectionStatus::Error, "初始化log系统失败");
         return false;
     }
+    std::cerr << "[DEBUG] Logger initialized successfully" << std::endl;
     
     // 3. 初始化单例检查
+    std::cerr << "[DEBUG] Checking singleton..." << std::endl;
     if (!initializeSingleton()) {
+        std::cerr << "[ERROR] Singleton check failed" << std::endl;
         notifyStatusChange(DetectionStatus::Error, "单例检查失败");
         return false;
     }
+    std::cerr << "[DEBUG] Singleton check passed" << std::endl;
     
     // 4. 检查软件授权
+    std::cerr << "[DEBUG] Checking software authorization..." << std::endl;
     if (!checkSoftwareAuthorization()) {
+        std::cerr << "[ERROR] Software authorization failed" << std::endl;
         notifyStatusChange(DetectionStatus::Error, "软件授权过期");
         return false;
     }
+    std::cerr << "[DEBUG] Software authorization passed" << std::endl;
     
     // 5. 初始化配置解析器
+    std::cerr << "[DEBUG] Initializing config parser..." << std::endl;
     configParser_ = ConfigParser::getInstance();
     if (!configParser_) {
+        std::cerr << "[ERROR] Config parser initialization failed" << std::endl;
         notifyStatusChange(DetectionStatus::Error, "配置解析器初始化失败");
         return false;
     }
+    std::cerr << "[DEBUG] Config parser initialized successfully" << std::endl;
     
     isInitialized_ = true;
+    std::cerr << "[DEBUG] PADetectCore initialization completed successfully" << std::endl;
     notifyStatusChange(DetectionStatus::Stopped);
     return true;
 }
@@ -197,13 +211,7 @@ bool PADetectCore::startDetection() {
         notifyStatusChange(DetectionStatus::Error, "图像处理器初始化失败");
         return false;
     }
-    
-    // 启动图像处理
-    if (imageProcessor_) {
-        imageProcessor_->prepare();
-        imageProcessor_->start();
-    }
-    
+
     status_ = DetectionStatus::Running;
     notifyStatusChange(DetectionStatus::Running);
     
@@ -430,31 +438,46 @@ bool PADetectCore::initializeDetector() {
 
 bool PADetectCore::initializeImageProcessor() {
     try {
+        // 使用带参数的构造函数创建ImageProcessor
         imageProcessor_ = std::make_unique<ImageProcessor>(captureInterval_, cameraId_, cameraWidth_, cameraHeight_);
         if (!imageProcessor_) {
-            MY_SPDLOG_ERROR("Failed to create ImageProcessor");
+            MY_SPDLOG_ERROR("Failed to create ImageProcessor instance");
             return false;
         }
-        
-        // 设置检测参数
+
+        // 从配置文件加载参数
         if (configParser_) {
-            std::shared_ptr<MyMeta> imageProcessMeta = configParser_->getImageProcessMeta();
-            if (imageProcessMeta) {
-                imageProcessor_->setDetectParam(imageProcessMeta);
-            }
-            
-            std::shared_ptr<MyMeta> testMeta = configParser_->getTestMeta();
-            if (testMeta) {
-                imageProcessor_->setTestParam(testMeta);
-                
-                // 设置测试模式参数
-                bool testSourcePreview = testMeta->getBoolOrDefault("test_source_preview", false);
-                std::string testVideoPath = testMeta->getStringOrDefault("test_video_path", "");
-                imageProcessor_->setTestConfigs(testSourcePreview, testVideoPath);
+            std::shared_ptr<MyMeta> detectMeta = configParser_->getDetectMeta();
+            if (detectMeta) {
+                imageProcessor_->setDetectParam(detectMeta);
             }
         }
+
+        // 准备图像处理器
+        imageProcessor_->prepare();
         
-        MY_SPDLOG_INFO("Image processor initialized");
+        // 启动图像处理（这里可能会抛出摄像头相关异常）
+        imageProcessor_->start();
+        
+        // 等待一小段时间确保工作线程启动
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
+        // 检查工作线程状态
+        if (!imageProcessor_->getWorkThreadStatus()) {
+            MY_SPDLOG_ERROR("ImageProcessor work thread failed to start properly");
+            return false;
+        }
+
+        
+        // 设置测试模式
+        // if (testMode_) {
+        //         bool testSourcePreview = configParser_->getTestMeta()->getBoolOrDefault("test_source_preview", false);
+        //         std::string testVideoPath = configParser_->getTestMeta()->getStringOrDefault("test_video_path", "");
+        //         imageProcessor_->setTestConfigs(testSourcePreview, testVideoPath);
+        // }
+        
+        
+        MY_SPDLOG_INFO("ImageProcessor initialized successfully");
         return true;
     }
     catch (const std::exception& e) {

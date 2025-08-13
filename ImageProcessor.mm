@@ -25,8 +25,13 @@
 #include <unordered_map>
 #include <filesystem>
 #include <algorithm>
+#include <shared_mutex>
+#include <sstream>
+#include <iomanip>
+#include <fstream>
 
 #import <AVFoundation/AVFoundation.h>
+#include <opencv2/opencv.hpp>
 
 namespace fs = std::filesystem;
 constexpr int32_t MAX_CAP_IDX = 9;
@@ -374,31 +379,40 @@ void ImageProcessor::alertWork() {
     // picUploader->start();
 
     //std::string prefixCapPathStr = imgCapDir.string();
-    fs::path dirPath = "data";
+    // 使用用户主目录下的数据目录，避免只读文件系统问题
+    std::string homeDir = std::getenv("HOME") ? std::getenv("HOME") : "/tmp";
+    std::string dirPathStr = homeDir + "/.padetect_data";
     std::string baseDir = "";
     bool curDirCreate = false;
     try {
-        if (fs::create_directory(dirPath)) {
-            MY_SPDLOG_INFO("current directory created successfully.");
+        // 使用系统调用创建目录
+        std::string mkdirCmd = "mkdir -p \"" + dirPathStr + "\"";
+        int result = system(mkdirCmd.c_str());
+        if (result == 0) {
+            MY_SPDLOG_INFO("data directory created successfully at: {}", dirPathStr);
+            curDirCreate = true;
+        } else {
+            MY_SPDLOG_WARN("Failed to create directory: {}", dirPathStr);
+            curDirCreate = false;
         }
-        else {
-            MY_SPDLOG_WARN("current directory already exists");
-        }
-        curDirCreate = true;
     }
-    catch (const fs::filesystem_error& e) {
+    catch (const std::exception& e) {
         MY_SPDLOG_WARN("Error creating directory: {}", e.what());
         curDirCreate = false;
     }
 
     if (curDirCreate) {
-        baseDir = dirPath.string();
+        baseDir = dirPathStr;
     }
 
     std::string PreDateStr{ "" }, preImgStr{ "" };
     getDateAndImgStr(PreDateStr, preImgStr);
     std::string prefixPathStr = baseDir;
-    fs::create_directories(prefixPathStr);
+    // 确保目录存在
+    if (!prefixPathStr.empty()) {
+        std::string mkdirCmd = "mkdir -p \"" + prefixPathStr + "\"";
+        system(mkdirCmd.c_str());
+    }
     // work thread loop
     // 设置 JPEG 图像质量
     std::vector<int> params;
@@ -680,15 +694,8 @@ void ImageProcessor::setDetectParam(const std::shared_ptr<MyMeta>& meta) {
         m_isCfgListReg = true;
     }
 
-    {        std::unique_lock<std::shared_mutex> writeLock(m_paramMtx);
-        // 基础参数
-        static bool isCamInit = false;
-        if (!isCamInit) {
-            m_cameraId = meta->getInt32OrDefault("camera_id", m_cameraId);
-            m_cameraWidth = meta->getInt32OrDefault("camera_width", m_cameraWidth);
-            m_cameraHeight = meta->getInt32OrDefault("camera_height", m_cameraHeight);
-            isCamInit = true;
-        }
+    {        
+        std::unique_lock<std::shared_mutex> writeLock(m_paramMtx);
 
         m_capInterval = meta->getInt32OrDefault("detect_interval", m_capInterval);
         m_alertShowInterval = meta->getInt32OrDefault("alert_show_interval", m_alertShowInterval);
@@ -723,7 +730,7 @@ void ImageProcessor::setDetectParam(const std::shared_ptr<MyMeta>& meta) {
     }
     // 日志输出保持不变
     MY_SPDLOG_DEBUG("配置更新: \n"
-              "cap_interval={}, alert_interval={}, cam_id={}, cam_w={}, cam_h={}, \n"
+              "cap_interval={}, alert_interval={}, \n"
               "phone_en={}, phone_win={}, phone_scr={}, phone_cam={}, \n"
               "suspect_en={}, suspect_scr={}, suspect_cam={}, \n"
               "peep_en={}, peep_win={}, \n"
@@ -732,9 +739,8 @@ void ImageProcessor::setDetectParam(const std::shared_ptr<MyMeta>& meta) {
               "bri_low={}, bri_hight={}, \n"
               "noconnect_en={}, noconnect_win={}",
 
-              // 第一行：基础参数 (5个)
+              // 第一行：基础参数 (2个)
               m_capInterval, m_alertShowInterval,
-              m_cameraId, m_cameraWidth, m_cameraHeight,
 
               // 第二行：手机检测开关 (4个)
               m_alertPhoneEnable, m_alertPhoneWindowEnable,

@@ -5,15 +5,7 @@
 #include <unistd.h>
 
 std::string LogPathUtils::getLogDirectory() {
-#ifdef __APPLE__
-    const char* homeDir = getenv("HOME");
-    if (homeDir) {
-        return std::string(homeDir) + "/Library/Logs/PADetect";
-    }
-    return "/tmp/PADetect/logs"; // 备用路径
-#else
-    return "./log";
-#endif
+    return "/Users/bamboo/Documents/PADetect/logs";
 }
 
 std::string LogPathUtils::getLogFilePath(const std::string& filename) {
