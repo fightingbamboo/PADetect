@@ -1,4 +1,5 @@
 #include "MyWindMsgBox.h"
+#include "MyLogger.hpp"
 
 MyWindMsgBox::MyWindMsgBox(std::string content,
                           std::string title,
@@ -30,8 +31,8 @@ MyWindMsgBox::~MyWindMsgBox() {
         // 在 macOS 下使用 SwiftUI 消息框
         showMacOSMessageBox(m_title.c_str(), m_content.c_str(), m_style);
 #else
-        // 其他平台使用控制台输出
-        std::cout << "[" << m_title << "] " << m_content << std::endl;
+        // 其他平台使用MyLogger输出
+        MY_SPDLOG_INFO("[{}] {}", m_title, m_content);
 #endif
     }
 }

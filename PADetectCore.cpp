@@ -86,38 +86,38 @@ bool PADetectCore::initialize() {
         notifyStatusChange(DetectionStatus::Error, "初始化log系统失败");
         return false;
     }
-    std::cerr << "[DEBUG] Logger initialized successfully" << std::endl;
+    MY_SPDLOG_DEBUG("Logger initialized successfully");
     
     // 3. 初始化单例检查
-    std::cerr << "[DEBUG] Checking singleton..." << std::endl;
+    MY_SPDLOG_DEBUG("Checking singleton...");
     if (!initializeSingleton()) {
-        std::cerr << "[ERROR] Singleton check failed" << std::endl;
+        MY_SPDLOG_ERROR("Singleton check failed");
         notifyStatusChange(DetectionStatus::Error, "单例检查失败");
         return false;
     }
-    std::cerr << "[DEBUG] Singleton check passed" << std::endl;
+    MY_SPDLOG_DEBUG("Singleton check passed");
     
     // 4. 检查软件授权
-    std::cerr << "[DEBUG] Checking software authorization..." << std::endl;
+    MY_SPDLOG_DEBUG("Checking software authorization...");
     if (!checkSoftwareAuthorization()) {
-        std::cerr << "[ERROR] Software authorization failed" << std::endl;
+        MY_SPDLOG_ERROR("Software authorization failed");
         notifyStatusChange(DetectionStatus::Error, "软件授权过期");
         return false;
     }
-    std::cerr << "[DEBUG] Software authorization passed" << std::endl;
+    MY_SPDLOG_DEBUG("Software authorization passed");
     
     // 5. 初始化配置解析器
-    std::cerr << "[DEBUG] Initializing config parser..." << std::endl;
+    MY_SPDLOG_DEBUG("Initializing config parser...");
     configParser_ = ConfigParser::getInstance();
     if (!configParser_) {
-        std::cerr << "[ERROR] Config parser initialization failed" << std::endl;
+        MY_SPDLOG_ERROR("Config parser initialization failed");
         notifyStatusChange(DetectionStatus::Error, "配置解析器初始化失败");
         return false;
     }
-    std::cerr << "[DEBUG] Config parser initialized successfully" << std::endl;
+    MY_SPDLOG_DEBUG("Config parser initialized successfully");
     
     isInitialized_ = true;
-    std::cerr << "[DEBUG] PADetectCore initialization completed successfully" << std::endl;
+    MY_SPDLOG_DEBUG("PADetectCore initialization completed successfully");
     notifyStatusChange(DetectionStatus::Stopped);
     return true;
 }

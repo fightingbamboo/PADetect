@@ -1,29 +1,39 @@
 
 
 #include <iostream>
+#include <filesystem>
+#include <cstdlib>
 #include "MNNDetector.h"
+#include "MyLogger.hpp"
 
-MNNDetector::MNNDetector(const std::string& model_path,
-    const std::vector<std::string>& classes)
+MNNDetector::MNNDetector(const std::string& model_path, const std::vector<std::string>& classes)
     : class_names(classes) {
 
-    printf("[MNNDetector DEBUG] Starting MNNDetector constructor with model: %s\n", model_path.c_str());
+    MY_SPDLOG_DEBUG("MNNDetector constructor called");
+    
+    // 初始化日志
+    if (!MySpdlog::getInstance()->init()) {
+        MY_SPDLOG_ERROR("Failed to initialize logger");
+    }
+    
+    MY_SPDLOG_INFO("MNNDetector initialized with model: {}", model_path.c_str());
+    MY_SPDLOG_DEBUG("Starting MNNDetector constructor with model: {}", model_path.c_str());
     
     // 1. 加载模型
-    printf("[MNNDetector DEBUG] Loading MNN model...\n");
+    MY_SPDLOG_DEBUG("Loading MNN model...");
     interpreter = std::shared_ptr<MNN::Interpreter>(
         MNN::Interpreter::createFromFile(model_path.c_str()),
         MNN::Interpreter::destroy
         );
     
     if (!interpreter) {
-        printf("[MNNDetector ERROR] Failed to load MNN model from: %s\n", model_path.c_str());
+        MY_SPDLOG_ERROR("Failed to load MNN model from: {}", model_path.c_str());
         throw std::runtime_error("Failed to load MNN model");
     }
-    printf("[MNNDetector DEBUG] MNN model loaded successfully\n");
+    MY_SPDLOG_DEBUG("MNN model loaded successfully");
 
     // 创建缓存目录
-    printf("[MNNDetector DEBUG] Creating cache directory...\n");
+    MY_SPDLOG_DEBUG("Creating cache directory...");
     
     // 使用用户主目录下的缓存目录，避免只读文件系统问题
     std::string homeDir = std::getenv("HOME") ? std::getenv("HOME") : "/tmp";
@@ -36,14 +46,14 @@ MNNDetector::MNNDetector(const std::string& model_path,
         auto cachePath = std::filesystem::path(cacheDir) / "cachefile";
         std::string cacheStr = cachePath.string();
         interpreter->setCacheFile(cacheStr.c_str());
-        printf("[MNNDetector DEBUG] Cache directory created and set at: %s\n", cacheDir.c_str());
+        MY_SPDLOG_DEBUG("Cache directory created and set at: {}", cacheDir);
     } catch (const std::filesystem::filesystem_error& e) {
-        printf("[MNNDetector WARNING] Failed to create cache directory: %s, continuing without cache\n", e.what());
+        MY_SPDLOG_WARN("Failed to create cache directory: {}, continuing without cache", e.what());
         // 继续执行，不使用缓存
     }
 
     // 2. 配置会话，使用OpenCL加速
-    printf("[MNNDetector DEBUG] Configuring OpenCL session...\n");
+    MY_SPDLOG_DEBUG("Configuring OpenCL session...");
     MNN::ScheduleConfig config;
     config.type = MNN_FORWARD_OPENCL;
     MNN::BackendConfig backend_config;
@@ -51,14 +61,14 @@ MNNDetector::MNNDetector(const std::string& model_path,
     config.backendConfig = &backend_config;
 
     // 3. 创建会话
-    printf("[MNNDetector DEBUG] Creating MNN session...\n");
+    MY_SPDLOG_DEBUG("Creating MNN session...");
     session = interpreter->createSession(config);
     
     if (!session) {
-        printf("[MNNDetector ERROR] Failed to create MNN session\n");
+        MY_SPDLOG_ERROR("Failed to create MNN session");
         throw std::runtime_error("Failed to create MNN session");
     }
-    printf("[MNNDetector DEBUG] MNN session created successfully\n");
+    MY_SPDLOG_DEBUG("MNN session created successfully");
 
     // 4. 获取输入输出张量
     input_tensor = interpreter->getSessionInput(session, "images");
@@ -69,7 +79,8 @@ MNNDetector::MNNDetector(const std::string& model_path,
     if (input_shape.size() != 4 || input_shape[0] != 1 || input_shape[1] != 3) {
         throw std::runtime_error("Invalid input dimensions");
     }
-    m_targetSize = cv::Size(input_shape[3], input_shape[2]); // 宽x高
+    model_input_size = cv::Size(input_shape[3], input_shape[2]); // 宽x高
+    m_targetSize = model_input_size;
 
     // 6. 初始化预处理
     m_pretreat = std::shared_ptr<MNN::CV::ImageProcess>(
@@ -82,14 +93,13 @@ MNNDetector::MNNDetector(const std::string& model_path,
         MNN::CV::ImageProcess::destroy
         );
 
-    std::cout << "Detector initialized - Input: "
-        << m_targetSize.width << "x" << m_targetSize.height << "\n";
+    MY_SPDLOG_INFO("Detector initialized - Input: {}x{}", model_input_size.width, model_input_size.height);
 }
 
 MNNDetector::~MNNDetector() {
     
     interpreter->updateCacheFile(session);
-    std::cout << "update cache file" << std::endl;
+    MY_SPDLOG_DEBUG("update cache file");
 }
 
 void MNNDetector::PreprocessImage(const cv::Mat& src) {

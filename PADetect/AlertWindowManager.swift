@@ -78,7 +78,7 @@ class AlertWindow: NSWindow {
     }
     
     deinit {
-        NSLog("[AlertWindow] 开始释放窗口")
+        SwiftLogger.shared.debug("[AlertWindow] 开始释放窗口")
         
         // 清除 delegate 引用，避免悬空指针
         self.delegate = nil
@@ -89,7 +89,7 @@ class AlertWindow: NSWindow {
             self.hostingView = nil
         }
         
-        NSLog("[AlertWindow] 窗口已释放")
+        SwiftLogger.shared.debug("[AlertWindow] 窗口已释放")
     }
     
     private func setupWindow() {
@@ -236,7 +236,7 @@ class AlertWindowManager: ObservableObject {
             
             self.isShowing = true
             
-            NSLog("[AlertWindowManager] 显示告警窗口，模式: \(mode.localizedDescription)，屏幕数量: \(screens.count)")
+            SwiftLogger.shared.info("[AlertWindowManager] 显示告警窗口，模式: \(mode.localizedDescription)，屏幕数量: \(screens.count)")
         }
     }
     
@@ -278,7 +278,7 @@ class AlertWindowManager: ObservableObject {
             }
         }
         
-        NSLog("[AlertWindowManager] 隐藏告警窗口，关闭了 \(windowCount) 个窗口")
+        SwiftLogger.shared.info("[AlertWindowManager] 隐藏告警窗口，关闭了 \(windowCount) 个窗口")
     }
     
     /// 检查是否正在显示告警

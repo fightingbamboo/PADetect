@@ -203,6 +203,21 @@ clean:
 # 重新构建
 rebuild: clean all
 
+# 并行重新构建 (使用所有可用CPU核心)
+rebuild-parallel: clean
+	@echo "Starting parallel build with $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) threads..."
+	$(MAKE) -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) all
+
+# 并行构建 (使用所有可用CPU核心)
+parallel:
+	@echo "Starting parallel build with $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) threads..."
+	$(MAKE) -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) all
+
+# 自定义线程数并行构建
+parallel-j%:
+	@echo "Starting parallel build with $* threads..."
+	$(MAKE) -j$* all
+
 # 安装依赖 (macOS)
 install-deps-macos:
 	@echo "Installing dependencies for macOS..."
@@ -247,11 +262,14 @@ release: $(TARGET)
 help:
 	@echo "Available targets:"
 	@echo "  all        - Build the project (default)"
+	@echo "  parallel   - Build the project using all CPU cores"
+	@echo "  parallel-j<N> - Build the project using N threads (e.g., parallel-j8)"
 	@echo "  universal  - Build universal binary (x86_64 + arm64)"
 	@echo "  x86_64     - Build for x86_64 architecture only"
 	@echo "  arm64      - Build for arm64 architecture only"
 	@echo "  clean      - Remove object files and executable"
 	@echo "  rebuild    - Clean and build"
+	@echo "  rebuild-parallel - Clean and build using all CPU cores"
 	@echo "  debug      - Build debug version"
 	@echo "  release    - Build release version"
 	@echo "  check-deps - Check if dependencies are installed"
@@ -270,7 +288,7 @@ help:
 	@echo "  make ARCHS=\"arm64\"      # Build for Apple Silicon only"
 
 # 声明伪目标
-.PHONY: all universal x86_64 arm64 clean rebuild debug release check-deps install-deps-macos install-deps-linux help
+.PHONY: all universal x86_64 arm64 clean rebuild rebuild-parallel parallel debug release check-deps install-deps-macos install-deps-linux help
 
 # 依赖关系 (可选，用于头文件变化时重新编译)
 # 只为实际编译的源文件生成依赖

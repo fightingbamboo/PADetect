@@ -121,11 +121,11 @@ public class PADetectManager: ObservableObject {
                 DispatchQueue.main.async {
                     if granted {
                         self.cameraPermissionStatus = .authorized
-                        NSLog("[PADetect] Camera permission granted")
+                        SwiftLogger.shared.info("Camera permission granted")
                     } else {
                         self.cameraPermissionStatus = .denied
                         self.errorMessage = "摄像头权限被拒绝。请在系统设置 > 隐私与安全性 > 摄像头中启用PADetect的摄像头权限。"
-                        NSLog("[PADetect] Camera permission denied")
+                        SwiftLogger.shared.warning("Camera permission denied")
                     }
                 }
                 continuation.resume(returning: granted)
@@ -151,11 +151,11 @@ public class PADetectManager: ObservableObject {
     public func initialize(with configuration: Configuration) async throws {
         return try await withCheckedThrowingContinuation { continuation in
             do {
-                NSLog("[PADetect DEBUG] About to call bridge.initialize")
-                NSLog("[PADetect DEBUG] Model path: %@", configuration.modelPath)
-                NSLog("[PADetect DEBUG] Config path: %@", configuration.configPath)
-                NSLog("[PADetect DEBUG] Pipeline path: %@", configuration.pipelinePath)
-                NSLog("[PADetect DEBUG] Device: %@", configuration.device)
+                SwiftLogger.shared.debug("About to call bridge.initialize")
+        SwiftLogger.shared.debug("Model path: \(configuration.modelPath)")
+        SwiftLogger.shared.debug("Config path: \(configuration.configPath)")
+        SwiftLogger.shared.debug("Pipeline path: \(configuration.pipelinePath)")
+        SwiftLogger.shared.debug("Device: \(configuration.device)")
                 
                 try bridge.initialize(
                     withModelPath: configuration.modelPath,
@@ -163,10 +163,10 @@ public class PADetectManager: ObservableObject {
                     pipelinePath: configuration.pipelinePath,
                     device: configuration.device
                 )
-                NSLog("[PADetect DEBUG] bridge.initialize completed successfully")
+                SwiftLogger.shared.debug("bridge.initialize completed successfully")
                 continuation.resume()
             } catch {
-                NSLog("[PADetect DEBUG] bridge.initialize failed: %@", error.localizedDescription)
+                SwiftLogger.shared.error("bridge.initialize failed: \(error.localizedDescription)")
                 continuation.resume(throwing: error)
             }
         }
@@ -375,26 +375,26 @@ extension PADetectManager {
     
     /// 使用默认配置初始化
     public func initializeWithDefaults() async throws {
-        NSLog("[PADetect DEBUG] Starting initializeWithDefaults...")
+        SwiftLogger.shared.debug("Starting initializeWithDefaults...")
         
         // 检查摄像头权限状态但不阻塞初始化
-        NSLog("[PADetect DEBUG] Checking camera permission status...")
+        SwiftLogger.shared.debug("Checking camera permission status...")
         let _ = checkCameraPermission()
-        NSLog("[PADetect DEBUG] Camera permission status checked, continuing with initialization...")
+        SwiftLogger.shared.debug("Camera permission status checked, continuing with initialization...")
         let bundle = Bundle.main
-        NSLog("[PADetect DEBUG] Bundle path: %@", bundle.bundlePath)
+        SwiftLogger.shared.debug("Bundle path: \(bundle.bundlePath)")
         
         guard let modelPath = bundle.path(forResource: "best_640", ofType: "mnn", inDirectory: "mnn_model") else {
-            NSLog("[PADetect DEBUG] Model file not found in bundle")
+            SwiftLogger.shared.warning("Model file not found in bundle")
             // 列出Resources目录内容进行调试
             if let resourcesPath = bundle.resourcePath {
-                NSLog("[PADetect DEBUG] Resources path: %@", resourcesPath)
-                do {
-                    let contents = try FileManager.default.contentsOfDirectory(atPath: resourcesPath)
-                    NSLog("[PADetect DEBUG] Resources contents: %@", contents.description)
-                } catch {
-                    NSLog("[PADetect DEBUG] Error listing resources: %@", error.localizedDescription)
-                }
+                SwiftLogger.shared.debug("Resources path: \(resourcesPath)")
+                 do {
+                     let contents = try FileManager.default.contentsOfDirectory(atPath: resourcesPath)
+                     SwiftLogger.shared.debug("Resources contents: \(contents.description)")
+                 } catch {
+                     SwiftLogger.shared.error("Error listing resources: \(error.localizedDescription)")
+                 }
             }
             throw NSError(
                 domain: "PADetectManager",
@@ -403,7 +403,7 @@ extension PADetectManager {
             )
         }
         
-        NSLog("[PADetect DEBUG] Model found at: %@", modelPath)
+        SwiftLogger.shared.debug("Model found at: \(modelPath)")
         
         // MNN模型不需要额外的配置文件
         let config = Configuration(
@@ -413,9 +413,9 @@ extension PADetectManager {
             device: "AUTO"
         )
         
-        NSLog("[PADetect DEBUG] Calling initialize with config...")
+        SwiftLogger.shared.debug("Calling initialize with config...")
         try await initialize(with: config)
-        NSLog("[PADetect DEBUG] Initialize completed successfully")
+        SwiftLogger.shared.debug("Initialize completed successfully")
     }
     
     /// 加载默认配置文件

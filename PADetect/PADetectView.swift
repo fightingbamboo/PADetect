@@ -60,7 +60,7 @@ struct PADetectView: View {
             .padding()
             .navigationTitle("PADetect 智能检测")
             .onAppear {
-                NSLog("[PADetect DEBUG] PADetectView onAppear called")
+                SwiftLogger.shared.debug("PADetectView onAppear called")
                 refreshCameraList()
                 initializeDetector()
                 setupNotificationObservers()
@@ -505,14 +505,14 @@ struct PADetectView: View {
     // MARK: - Methods
     
     private func initializeDetector() {
-        NSLog("[PADetect DEBUG] initializeDetector called")
+        SwiftLogger.shared.debug("initializeDetector called")
         Task {
             do {
-                NSLog("[PADetect DEBUG] About to call initializeWithDefaults")
-                try await detectManager.initializeWithDefaults()
-                NSLog("[PADetect DEBUG] initializeWithDefaults completed")
-                try await detectManager.loadDefaultConfigs()
-                NSLog("[PADetect DEBUG] loadDefaultConfigs completed")
+                SwiftLogger.shared.debug("About to call initializeWithDefaults")
+             try await detectManager.initializeWithDefaults()
+             SwiftLogger.shared.debug("initializeWithDefaults completed")
+             try await detectManager.loadDefaultConfigs()
+             SwiftLogger.shared.debug("loadDefaultConfigs completed")
                 await MainActor.run {
                     isInitialized = true
                     
@@ -524,14 +524,14 @@ struct PADetectView: View {
                     noConnectAlertEnabled = detectManager.getAlertEnabled(for: .noConnect)
                     suspectAlertEnabled = detectManager.getAlertEnabled(for: .suspect)
                     
-                    NSLog("[PADetect DEBUG] Alert states synced from config: phone=\(phoneAlertEnabled), peep=\(peepAlertEnabled), nobody=\(nobodyAlertEnabled), occlude=\(occludeAlertEnabled), noConnect=\(noConnectAlertEnabled), suspect=\(suspectAlertEnabled)")
+                    SwiftLogger.shared.debug("Alert states synced from config: phone=\(phoneAlertEnabled), peep=\(peepAlertEnabled), nobody=\(nobodyAlertEnabled), occlude=\(occludeAlertEnabled), noConnect=\(noConnectAlertEnabled), suspect=\(suspectAlertEnabled)")
                     
                     alertMessage = "检测器初始化成功"
                     showingAlert = true
-                    NSLog("[PADetect DEBUG] Initialization successful")
+                    SwiftLogger.shared.debug("Initialization successful")
                 }
             } catch {
-                NSLog("[PADetect DEBUG] Initialization failed: %@", error.localizedDescription)
+                SwiftLogger.shared.error("Initialization failed: \(error.localizedDescription)")
                 await MainActor.run {
                     isInitialized = false
                     alertMessage = "初始化失败: \(error.localizedDescription)"
@@ -606,14 +606,14 @@ struct PADetectView: View {
         ]
         let randomType = alertTypes.randomElement() ?? PAAlertType(rawValue: 0)!
         
-        NSLog("[PADetect DEBUG] 测试告警弹窗，类型: \(randomType.alertMode.localizedDescription)")
+        SwiftLogger.shared.debug("测试告警弹窗，类型: \(randomType.alertMode.localizedDescription)")
         
         // 显示弹窗3秒后自动隐藏
         detectManager.showAlert(for: randomType)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             self.detectManager.hideAlert()
-            NSLog("[PADetect DEBUG] 自动隐藏告警弹窗")
+            SwiftLogger.shared.debug("自动隐藏告警弹窗")
         }
         
         // 显示提示信息
@@ -630,7 +630,7 @@ struct PADetectView: View {
              object: nil,
              queue: .main
          ) { notification in
-             NSLog("[PADetect DEBUG] 收到显示全屏弹窗通知")
+             SwiftLogger.shared.debug("收到显示全屏弹窗通知")
              
              if let userInfo = notification.userInfo,
                 let alertTypeRaw = userInfo["alertType"] as? Int,
@@ -648,7 +648,7 @@ struct PADetectView: View {
                  default: mode = .phone
                  }
                  
-                 NSLog("[PADetect DEBUG] 弹窗类型: \(mode), 版本: \(version)")
+                 SwiftLogger.shared.debug("弹窗类型: \(mode), 版本: \(version)")
                  AlertWindowManager.shared.showAlert(mode: mode, version: version)
              }
          }
@@ -659,7 +659,7 @@ struct PADetectView: View {
              object: nil,
              queue: .main
          ) { notification in
-             NSLog("[PADetect DEBUG] 收到隐藏全屏弹窗通知")
+             SwiftLogger.shared.debug("收到隐藏全屏弹窗通知")
              AlertWindowManager.shared.hideAlert()
          }
          
@@ -669,7 +669,7 @@ struct PADetectView: View {
              object: nil,
              queue: .main
          ) { notification in
-             NSLog("[PADetect DEBUG] 全屏弹窗已显示")
+             SwiftLogger.shared.debug("全屏弹窗已显示")
          }
          
          NotificationCenter.default.addObserver(
@@ -677,7 +677,7 @@ struct PADetectView: View {
              object: nil,
              queue: .main
          ) { notification in
-             NSLog("[PADetect DEBUG] 全屏弹窗已隐藏")
+             SwiftLogger.shared.debug("全屏弹窗已隐藏")
          }
      }
     
