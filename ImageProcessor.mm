@@ -28,11 +28,23 @@
 #include <algorithm>
 #include <shared_mutex>
 #include <sstream>
+
+// 定义告警类型常量
+enum ALERT_TYPE {
+    TEXT_PHONE = 0,
+    TEXT_PEEP,
+    TEXT_NOBODY,
+    TEXT_OCCLUDE,
+    TEXT_NOCONNECT,
+    TEXT_SUSPECT,
+    COUNT,
+};
+
 #include <iomanip>
 #include <fstream>
 
 #import <AVFoundation/AVFoundation.h>
-#include <opencv2/opencv.hpp>
+// OpenCV 已通过 ImageProcessor.h 包含
 
 namespace fs = std::filesystem;
 constexpr int32_t MAX_CAP_IDX = 9;
@@ -113,9 +125,9 @@ ImageProcessor::~ImageProcessor() {
 }
 
 void ImageProcessor::prepare() {
-    // m_scrShot = std::make_unique<ScreenShotWindows>(); // Windows screenshot removed for macOS
-    // bool ret = m_scrShot->init(); // Screenshot functionality removed for macOS
-    // MY_SPDLOG_INFO("screen shot init ret: {}", ret);
+    m_scrShot = std::make_unique<ScreenShotMacOs>();
+    bool ret = m_scrShot->init();
+    MY_SPDLOG_INFO("screen shot init ret: {}", ret);
 }
 
 void ImageProcessor::start() {
@@ -258,16 +270,6 @@ void ImageProcessor::work() {
             }
 
             // 确定警报类型和睡眠间隔 - AlertWindowManager已删除，改用简单枚举
-            // 定义简单的alert类型枚举
-            enum ALERT_TYPE {
-                    TEXT_PHONE = 0,
-                    TEXT_PEEP,
-                    TEXT_NOBODY,
-                    TEXT_OCCLUDE,
-                    TEXT_NOCONNECT,
-                    TEXT_SUSPECT,
-                    COUNT,
-                };
             int newMode = ALERT_TYPE::COUNT;
             long sleepInterval = m_capInterval;  // 默认采样间隔
 
@@ -343,24 +345,19 @@ void ImageProcessor::work() {
 void ImageProcessor::alertWork() {
     MY_SPDLOG_INFO(">>>");
 
-    // AlertWindowManager已删除，改用事件机制与SwiftUI通信
-    // AlertWindowManager* alertWindMgr = AlertWindowManager::getInstance();
-    // alertWindMgr->initGDIPlus();
-    // if (false == alertWindMgr->initWind()) {
-    //     MY_SPDLOG_CRITICAL("register alert window class failed");
-    //     return;
-    // }
-
-    // screen - removed for macOS compatibility
-    // int32_t screenWidth = 0, screenHeight = 0;
-    // m_scrShot->getScreenResolution(screenWidth, screenHeight);
-    // MY_SPDLOG_TRACE("screen width: {} height: {}", screenWidth, screenHeight);
-    // std::unique_ptr<uint8_t[]> screenBuf = std::make_unique<uint8_t[]>(screenWidth * screenHeight * 4);
-    // std::memset(screenBuf.get(), 0, screenWidth * screenHeight * 4);
-    // cv::Mat screenFrame(screenHeight, screenWidth, CV_8UC4, screenBuf.get());
-    // pic file upload - removed for macOS compatibility
-    // PicFileUploader* picUploader = PicFileUploader::getInstance();
-    // picUploader->start();
+    // screen
+    int32_t screenWidth = 0, screenHeight = 0;
+    if (m_scrShot) {
+        m_scrShot->getScreenResolution(screenWidth, screenHeight);
+        MY_SPDLOG_TRACE("screen width: {} height: {}", screenWidth, screenHeight);
+    }
+    std::unique_ptr<uint8_t[]> screenBuf = std::make_unique<uint8_t[]>(screenWidth * screenHeight * 4);
+    std::memset(screenBuf.get(), 0, screenWidth * screenHeight * 4);
+    cv::Mat screenFrame(screenHeight, screenWidth, CV_8UC4, screenBuf.get());
+    
+    // pic file upload
+    PicFileUploader* picUploader = PicFileUploader::getInstance();
+    picUploader->start();
 
     //std::string prefixCapPathStr = imgCapDir.string();
     // 使用用户主目录下的数据目录，避免只读文件系统问题
@@ -404,26 +401,161 @@ void ImageProcessor::alertWork() {
     params.push_back(60); // 设置质量为 60
 
     while (m_alertContinue.load()) {
-        // macOS简化的等待机制
+        // macOS等待机制
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
         std::unique_lock<std::mutex> lock(m_alertMtx);
         if (!m_alertContinue.load()) break;
-        // AlertWindowManager相关代码已删除，改用事件机制与SwiftUI通信
+        
         if (m_alertTaskVec.empty()) continue;
         m_lastAlertMode = m_alertTaskVec.back();
         m_alertTaskVec.clear();
         lock.unlock();
 
-        // 原有的AlertWindowManager switch语句已完全删除
-        // 改为使用事件机制与SwiftUI通信
-        // TODO: 实现具体的事件通知机制
-        MY_SPDLOG_DEBUG("Alert event detected, should notify SwiftUI");
+        // 处理不同的告警类型
+        switch (m_lastAlertMode) {
+            case TEXT_PHONE: {
+                MY_SPDLOG_INFO("Processing TEXT_PHONE alert");
+                if (m_alertPhoneScreenEnable && m_scrShot) {
+                    m_scrShot->capture(screenBuf.get());
+                    std::string dateStr, imgStr;
+                    getDateAndImgStr(dateStr, imgStr);
+                    std::string screenPath = prefixPathStr + "/screen_phone_" + imgStr + ".jpg";
+                    if (cv::imwrite(screenPath, screenFrame, params)) {
+                        MY_SPDLOG_INFO("Screen capture saved: {}", screenPath);
+                        std::ifstream file(screenPath, std::ios::binary);
+                        if (file) {
+                            std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            picUploader->writePic2Disk(screenPath, fileData);
+                        }
+                    }
+                }
+                if (m_alertPhoneCameraEnable && !m_cameraFrame.empty()) {
+                    std::string dateStr, imgStr;
+                    getDateAndImgStr(dateStr, imgStr);
+                    std::string cameraPath = prefixPathStr + "/camera_phone_" + imgStr + ".jpg";
+                    if (cv::imwrite(cameraPath, m_cameraFrame, params)) {
+                        MY_SPDLOG_INFO("Camera capture saved: {}", cameraPath);
+                        std::ifstream file(cameraPath, std::ios::binary);
+                        if (file) {
+                            std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            picUploader->writePic2Disk(cameraPath, fileData);
+                        }
+                    }
+                }
+                break;
+            }
+            case TEXT_SUSPECT: {
+                MY_SPDLOG_INFO("Processing TEXT_SUSPECT alert");
+                if (m_alertSuspectScreenEnable && m_scrShot) {
+                    m_scrShot->capture(screenBuf.get());
+                    std::string dateStr, imgStr;
+                    getDateAndImgStr(dateStr, imgStr);
+                    std::string screenPath = prefixPathStr + "/screen_suspect_" + imgStr + ".jpg";
+                    if (cv::imwrite(screenPath, screenFrame, params)) {
+                        MY_SPDLOG_INFO("Screen capture saved: {}", screenPath);
+                        std::ifstream file(screenPath, std::ios::binary);
+                        if (file) {
+                            std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            picUploader->writePic2Disk(screenPath, fileData);
+                        }
+                    }
+                }
+                if (m_alertSuspectCameraEnable && !m_cameraFrame.empty()) {
+                    std::string dateStr, imgStr;
+                    getDateAndImgStr(dateStr, imgStr);
+                    std::string cameraPath = prefixPathStr + "/camera_suspect_" + imgStr + ".jpg";
+                    if (cv::imwrite(cameraPath, m_cameraFrame, params)) {
+                        MY_SPDLOG_INFO("Camera capture saved: {}", cameraPath);
+                        std::ifstream file(cameraPath, std::ios::binary);
+                        if (file) {
+                            std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            picUploader->writePic2Disk(cameraPath, fileData);
+                        }
+                    }
+                }
+                break;
+            }
+            case TEXT_PEEP: {
+                MY_SPDLOG_INFO("Processing TEXT_PEEP alert");
+                if (!m_cameraFrame.empty()) {
+                    std::string dateStr, imgStr;
+                    getDateAndImgStr(dateStr, imgStr);
+                    std::string cameraPath = prefixPathStr + "/camera_peep_" + imgStr + ".jpg";
+                    if (cv::imwrite(cameraPath, m_cameraFrame, params)) {
+                        MY_SPDLOG_INFO("Camera capture saved: {}", cameraPath);
+                        std::ifstream file(cameraPath, std::ios::binary);
+                        if (file) {
+                            std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            picUploader->writePic2Disk(cameraPath, fileData);
+                        }
+                    }
+                }
+                break;
+            }
+            case TEXT_NOBODY: {
+                MY_SPDLOG_INFO("Processing TEXT_NOBODY alert");
+                if (!m_cameraFrame.empty()) {
+                    std::string dateStr, imgStr;
+                    getDateAndImgStr(dateStr, imgStr);
+                    std::string cameraPath = prefixPathStr + "/camera_nobody_" + imgStr + ".jpg";
+                    if (cv::imwrite(cameraPath, m_cameraFrame, params)) {
+                        MY_SPDLOG_INFO("Camera capture saved: {}", cameraPath);
+                        std::ifstream file(cameraPath, std::ios::binary);
+                        if (file) {
+                            std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            picUploader->writePic2Disk(cameraPath, fileData);
+                        }
+                    }
+                }
+                break;
+            }
+            case TEXT_OCCLUDE: {
+                MY_SPDLOG_INFO("Processing TEXT_OCCLUDE alert");
+                if (!m_cameraFrame.empty()) {
+                    std::string dateStr, imgStr;
+                    getDateAndImgStr(dateStr, imgStr);
+                    std::string cameraPath = prefixPathStr + "/camera_occlude_" + imgStr + ".jpg";
+                    if (cv::imwrite(cameraPath, m_cameraFrame, params)) {
+                        MY_SPDLOG_INFO("Camera capture saved: {}", cameraPath);
+                        std::ifstream file(cameraPath, std::ios::binary);
+                        if (file) {
+                            std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            picUploader->writePic2Disk(cameraPath, fileData);
+                        }
+                    }
+                }
+                break;
+            }
+            case TEXT_NOCONNECT: {
+                MY_SPDLOG_INFO("Processing TEXT_NOCONNECT alert");
+                if (m_scrShot) {
+                    m_scrShot->capture(screenBuf.get());
+                    std::string dateStr, imgStr;
+                    getDateAndImgStr(dateStr, imgStr);
+                    std::string screenPath = prefixPathStr + "/screen_noconnect_" + imgStr + ".jpg";
+                    if (cv::imwrite(screenPath, screenFrame, params)) {
+                        MY_SPDLOG_INFO("Screen capture saved: {}", screenPath);
+                        std::ifstream file(screenPath, std::ios::binary);
+                        if (file) {
+                            std::vector<uint8_t> fileData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                            picUploader->writePic2Disk(screenPath, fileData);
+                        }
+                    }
+                }
+                break;
+            }
+            default:
+                MY_SPDLOG_WARN("Unknown alert mode: {}", m_lastAlertMode);
+                break;
+        }
+        
+        // 通知SwiftUI显示告警窗口
+        MY_SPDLOG_DEBUG("Alert event processed, notifying SwiftUI");
     }
-    // picUploader->stop();
-    // AlertWindowManager已删除
-    // alertWindMgr->deinitWind();
-    // alertWindMgr->deinitGDIPlus();
+    
+    // 清理资源
+    picUploader->stop();
     MY_SPDLOG_INFO("<<<");
 }
 

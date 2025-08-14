@@ -400,6 +400,8 @@
 					"-F$(PROJECT_DIR)/mnn_3.2.0/Static",
 					"-framework",
 					"MNN",
+					"-framework",
+					"ScreenCaptureKit",
 					"$(PROJECT_DIR)/libPADetectCore.a",
 				);
 				SDKROOT = macosx;
@@ -495,6 +497,8 @@
 					"-F$(PROJECT_DIR)/mnn_3.2.0/Static",
 					"-framework",
 					"MNN",
+					"-framework",
+					"ScreenCaptureKit",
 					"$(PROJECT_DIR)/libPADetectCore.a",
 				);
 				SDKROOT = macosx;

@@ -17,7 +17,6 @@
 #ifndef SCREEN_SHOT_H
 #define SCREEN_SHOT_H
 
-
 #include <iostream>
 #include <vector>
 #include <cstdint>
@@ -30,6 +29,17 @@
 #include <X11/Xutil.h>
 #elif defined(__APPLE__)
 #include <ApplicationServices/ApplicationServices.h>
+#include <AvailabilityMacros.h>
+// 检查是否为 macOS 15.0 或更高版本
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 150000
+#define USE_LEGACY_CAPTURE 0
+#ifdef __OBJC__
+#import <ScreenCaptureKit/ScreenCaptureKit.h>
+#import <Foundation/Foundation.h>
+#endif
+#else
+#define USE_LEGACY_CAPTURE 1
+#endif
 #else
 #error Unsupported platform
 #endif
@@ -40,24 +50,21 @@ public:
     virtual bool init() = 0;
     virtual void capture(uint8_t* buffer) = 0;
     virtual void deinit() = 0;
-    virtual void getScreenResolution(int& width, int& height) = 0; // Added to get resolution
+    virtual void getScreenResolution(int& width, int& height) = 0;
 };
 
 #ifdef _WIN32
 class ScreenShotWindows : public ScreenShot {
 private:
-    HDC hdcScreen; // 屏幕设备上下文
-    int physicalWidth; // 当前显示器物理宽度
-    int physicalHeight; // 当前显示器物理高度
-    RECT monitorRect; // 当前显示器屏幕矩形（用于定位）
-    bool isMultiMonitor; // 是否多显示器环境
+    HDC hdcScreen;
+    int physicalWidth;
+    int physicalHeight;
+    RECT monitorRect;
+    bool isMultiMonitor;
 
-    // 获取当前活动显示器的物理分辨率
     bool getActiveMonitorInfo() {
-        // 获取当前活动窗口
         HWND hWnd = GetForegroundWindow();
         if (!hWnd) {
-            // 如果没有活动窗口，使用鼠标位置
             POINT cursorPos;
             if (GetCursorPos(&cursorPos)) {
                 hWnd = WindowFromPoint(cursorPos);
@@ -69,7 +76,6 @@ private:
             hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
         }
         else {
-            // 没有活动窗口时，使用鼠标位置
             POINT pt;
             GetCursorPos(&pt);
             hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
@@ -79,17 +85,14 @@ private:
             hMonitor = MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
         }
 
-        // 获取显示器信息
         MONITORINFOEX monitorInfo;
         monitorInfo.cbSize = sizeof(MONITORINFOEX);
         if (!GetMonitorInfo(hMonitor, &monitorInfo)) {
             return false;
         }
 
-        // 保存显示器矩形
         monitorRect = monitorInfo.rcMonitor;
 
-        // 创建设备上下文以获取物理分辨率
         HDC hdcMonitor = CreateDC(monitorInfo.szDevice, NULL, NULL, NULL);
         if (!hdcMonitor) {
             return false;
@@ -99,22 +102,17 @@ private:
         physicalHeight = GetDeviceCaps(hdcMonitor, VERTRES);
         DeleteDC(hdcMonitor);
 
-        // 检查是否多显示器环境
         isMultiMonitor = (GetSystemMetrics(SM_CMONITORS) > 1);
-
         return true;
     }
 
 public:
     bool init() override {
-        // 获取当前活动显示器信息
         if (!getActiveMonitorInfo()) {
-            // 失败时回退到主显示器
             hdcScreen = GetDC(NULL);
             if (!hdcScreen) {
                 return false;
             }
-
             physicalWidth = GetDeviceCaps(hdcScreen, DESKTOPHORZRES);
             physicalHeight = GetDeviceCaps(hdcScreen, DESKTOPVERTRES);
             monitorRect = { 0, 0, physicalWidth, physicalHeight };
@@ -126,7 +124,6 @@ public:
                 return false;
             }
         }
-
         return true;
     }
 
@@ -142,8 +139,6 @@ public:
         }
 
         HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMemory, hBitmap);
-
-        // 仅捕获当前显示器区域
         BitBlt(hdcMemory, 0, 0, width, height, hdcScreen,
                monitorRect.left, monitorRect.top, SRCCOPY);
 
@@ -151,14 +146,12 @@ public:
         GetObject(hBitmap, sizeof(BITMAP), &bmp);
         GetBitmapBits(hBitmap, bmp.bmWidthBytes * bmp.bmHeight, buffer);
 
-        // 恢复并清理
         SelectObject(hdcMemory, hOldBitmap);
         DeleteObject(hBitmap);
         DeleteDC(hdcMemory);
     }
 
     void getScreenResolution(int& width, int& height) override {
-        // 返回当前显示器的物理分辨率
         width = physicalWidth;
         height = physicalHeight;
     }
@@ -170,20 +163,16 @@ public:
         }
     }
 
-    // 新增：检查是否多显示器环境
     bool isMultiMonitorSetup() const {
         return isMultiMonitor;
     }
 
-    // 新增：获取显示器索引（用于多显示器场景）
     int getMonitorIndex() const {
         MONITORINFOEX monitorInfo;
         monitorInfo.cbSize = sizeof(MONITORINFOEX);
-
         HMONITOR hMonitor = MonitorFromRect(&monitorRect, MONITOR_DEFAULTTONULL);
         if (hMonitor && GetMonitorInfo(hMonitor, &monitorInfo)) {
-            // 这里简化处理，实际应用中可能需要更复杂的索引逻辑
-            return 0; // 实际应用中应返回正确的显示器索引
+            return 0;
         }
         return 0;
     }
@@ -200,9 +189,7 @@ private:
     int screenNum;
     bool isMultiMonitor;
 
-    // 获取当前活动显示器
     bool getActiveMonitorInfo() {
-        // 在X11中，获取当前鼠标所在屏幕
         Window root_return, child_return;
         int root_x, root_y, win_x, win_y;
         unsigned int mask_return;
@@ -214,12 +201,9 @@ private:
             return false;
         }
 
-        // 获取屏幕数量
         int screenCount = ScreenCount(display);
         isMultiMonitor = (screenCount > 1);
 
-        // 简化处理：使用鼠标位置确定屏幕
-        // 实际应用中应更精确地计算鼠标所在的屏幕
         for (int i = 0; i < screenCount; i++) {
             Screen* screen = ScreenOfDisplay(display, i);
             if (root_x >= screen->x && root_x < screen->x + screen->width &&
@@ -231,7 +215,6 @@ private:
             }
         }
 
-        // 默认使用主屏幕
         screenNum = 0;
         width = DisplayWidth(display, screenNum);
         height = DisplayHeight(display, screenNum);
@@ -244,18 +227,13 @@ public:
         if (!display) {
             return false;
         }
-
         root = DefaultRootWindow(display);
-
-        // 尝试获取当前活动显示器
         if (!getActiveMonitorInfo()) {
-            // 失败时使用默认屏幕
             screenNum = 0;
             width = DisplayWidth(display, screenNum);
             height = DisplayHeight(display, screenNum);
             isMultiMonitor = (ScreenCount(display) > 1);
         }
-
         return true;
     }
 
@@ -264,9 +242,7 @@ public:
         if (!img) {
             return;
         }
-
-        // X11 通常返回物理分辨率，但需注意字节顺序
-        memcpy(buffer, img->data, width * height * 4); // 假设为RGBA格式
+        memcpy(buffer, img->data, width * height * 4);
         XDestroyImage(img);
     }
 
@@ -295,20 +271,22 @@ private:
     int height;
     CGDirectDisplayID displayID;
     bool isMultiMonitor;
+#if !USE_LEGACY_CAPTURE && defined(__OBJC__)
+    SCDisplay* currentDisplay;
+    SCContentFilter* contentFilter;
+    SCStreamConfiguration* streamConfig;
+    NSImage* lastCapturedImage;
+    dispatch_semaphore_t captureSemaphore;
+#endif
 
-    // 获取当前活动显示器
     bool getActiveMonitorInfo() {
-        // 获取所有显示器
         CGDirectDisplayID mainDisplay = CGMainDisplayID();
         uint32_t displayCount;
         CGGetActiveDisplayList(0, NULL, &displayCount);
-
         isMultiMonitor = (displayCount > 1);
 
-        // 获取鼠标位置
         CGPoint cursorPos = CGEventGetLocation(CGEventCreate(NULL));
 
-        // 查找鼠标所在的显示器
         for (uint32_t i = 0; i < displayCount; i++) {
             CGDirectDisplayID displays[16];
             CGGetActiveDisplayList(16, displays, &displayCount);
@@ -319,8 +297,6 @@ private:
             CGSize screenSize = CGSizeMake(CGDisplayModeGetWidth(displayMode), CGDisplayModeGetHeight(displayMode));
             CFRelease(displayMode);
 
-            // 获取显示器位置（简化处理）
-            // 实际应用中应使用 CGDisplayBounds
             CGRect displayRect = CGRectMake(0, 0, screenSize.width, screenSize.height);
             if (CGRectContainsPoint(displayRect, cursorPos)) {
                 displayID = displays[i];
@@ -330,18 +306,22 @@ private:
             }
         }
 
-        // 默认使用主显示器
         displayID = mainDisplay;
         width = CGDisplayPixelsWide(displayID);
         height = CGDisplayPixelsHigh(displayID);
         return true;
     }
 
+#if !USE_LEGACY_CAPTURE && defined(__OBJC__)
+    bool initScreenCaptureKit();
+    void captureWithScreenCaptureKit(uint8_t* buffer);
+    void convertCGImageToBuffer(CGImageRef imageRef, uint8_t* buffer);
+    bool isScreenCaptureKitAvailable();
+#endif
+
 public:
     bool init() override {
-        // 尝试获取当前活动显示器
         if (!getActiveMonitorInfo()) {
-            // 失败时使用主显示器
             displayID = CGMainDisplayID();
             width = CGDisplayPixelsWide(displayID);
             height = CGDisplayPixelsHigh(displayID);
@@ -351,20 +331,30 @@ public:
             isMultiMonitor = (displayCount > 1);
         }
 
+#if !USE_LEGACY_CAPTURE && defined(__OBJC__)
+        if (!isScreenCaptureKitAvailable()) {
+            std::cout << "Warning: ScreenCaptureKit not available on this system" << std::endl;
+            return false;
+        }
+        if (!initScreenCaptureKit()) {
+            std::cout << "Warning: Failed to initialize ScreenCaptureKit" << std::endl;
+            return false;
+        }
+#endif
+
         return true;
     }
 
     void capture(uint8_t* buffer) override {
-        // 仅捕获当前显示器
-        // 注意：CGDisplayCreateImage在macOS 15.0中已废弃，建议使用ScreenCaptureKit
-        // 暂时禁用此功能以避免编译错误
-        /*
+#if USE_LEGACY_CAPTURE
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #pragma clang diagnostic ignored "-Wunguarded-availability"
         CGImageRef image = CGDisplayCreateImage(displayID);
 #pragma clang diagnostic pop
+        
         if (!image) {
+            memset(buffer, 0, width * height * 4);
             return;
         }
 
@@ -375,16 +365,27 @@ public:
         CFDataRef pixelDataRef = CGDataProviderCopyData(CGImageGetDataProvider(image));
         if (pixelDataRef) {
             const uint8_t* pixelData = CFDataGetBytePtr(pixelDataRef);
-            if (pixelData) {
+            if (pixelData && totalBytes <= (size_t)(width * height * 4)) {
                 memcpy(buffer, pixelData, totalBytes);
+            } else {
+                memset(buffer, 0, width * height * 4);
             }
             CFRelease(pixelDataRef);
+        } else {
+            memset(buffer, 0, width * height * 4);
         }
 
         CGImageRelease(image);
-        */
-        // 临时实现：清空缓冲区
+#else
+#ifdef __OBJC__
+        // 对于macOS 15.0+版本，使用ScreenCaptureKit
+        captureWithScreenCaptureKit(buffer);
+#else
+        // 如果不是Objective-C环境，则清空缓冲区
         memset(buffer, 0, width * height * 4);
+        std::cout << "Warning: ScreenCaptureKit requires Objective-C environment" << std::endl;
+#endif
+#endif
     }
 
     void getScreenResolution(int& w, int& h) override {
@@ -393,7 +394,28 @@ public:
     }
 
     void deinit() override {
-        // macOS 通常不需要特殊清理
+#if !USE_LEGACY_CAPTURE && defined(__OBJC__)
+        if (captureSemaphore) {
+            dispatch_release(captureSemaphore);
+            captureSemaphore = nullptr;
+        }
+        if (lastCapturedImage) {
+            [lastCapturedImage release];
+            lastCapturedImage = nil;
+        }
+        if (contentFilter) {
+            [contentFilter release];
+            contentFilter = nil;
+        }
+        if (streamConfig) {
+            [streamConfig release];
+            streamConfig = nil;
+        }
+        if (currentDisplay) {
+            [currentDisplay release];
+            currentDisplay = nil;
+        }
+#endif
     }
 
     bool isMultiMonitorSetup() const {
@@ -402,4 +424,4 @@ public:
 };
 #endif
 
-#endif // _SCREEN_SHOT_H
+#endif // SCREEN_SHOT_H

@@ -59,13 +59,13 @@ endif
 # OpenCV 库设置 (可选)
 OPENCV_PREFIX := $(shell pkg-config --variable=prefix opencv4 2>/dev/null || echo "")
 ifneq ($(OPENCV_PREFIX),)
-    OPENCV_FLAGS := $(shell pkg-config --cflags opencv4 2>/dev/null)
-    OPENCV_LIBS := $(shell pkg-config --libs opencv4 2>/dev/null)
-    CXXFLAGS += $(OPENCV_FLAGS) -DHAVE_OPENCV=1 -DHAS_OPENCV=1
-    LIBS += $(OPENCV_LIBS)
+OPENCV_FLAGS := $(shell pkg-config --cflags opencv4 2>/dev/null)
+OPENCV_LIBS := $(shell pkg-config --libs opencv4 2>/dev/null)
+CXXFLAGS += $(OPENCV_FLAGS) -DHAVE_OPENCV=1 -DHAS_OPENCV=1
+LIBS += $(OPENCV_LIBS)
 else
-    # 如果没有OpenCV，添加一个宏定义
-    CXXFLAGS += -DNO_OPENCV=1 -DHAS_OPENCV=0
+# 如果没有OpenCV，添加一个宏定义
+CXXFLAGS += -DNO_OPENCV=1 -DHAS_OPENCV=0
 endif
 
 # 平台检测
@@ -137,7 +137,7 @@ SOURCES = \
 
 # Objective-C++ 源文件 (仅macOS)
 ifeq ($(UNAME_S),Darwin)
-    MM_SOURCES = PlatformCompat.mm MyWindMsgBox_macOS.mm ImageProcessor.mm
+    MM_SOURCES = PlatformCompat.mm MyWindMsgBox_macOS.mm ImageProcessor.mm screenShot.mm
     MM_OBJECTS = $(MM_SOURCES:.mm=.o)
 else
     MM_SOURCES = PlatformCompat.cpp ImageProcessor.cpp.windows
