@@ -39,7 +39,7 @@
 class ImageProcessor : public IConfigUpdateListener {
 public:
     ImageProcessor();
-    ImageProcessor(int32_t capInterval, int32_t cameraId,
+    ImageProcessor(int32_t capInterval, const std::string& cameraId,
         int32_t cameraWidth, int32_t cameraHeight);
     ~ImageProcessor();
     void prepare();
@@ -110,7 +110,7 @@ private:
 
     int32_t m_capInterval{ 300 };
     int32_t m_alertShowInterval{ 500 };
-    int32_t m_cameraId{ 0 };
+    std::string m_cameraId{ "default_camera" };
     int32_t m_cameraWidth{ 640 };
     int32_t m_cameraHeight{ 640 };
 

@@ -72,7 +72,7 @@ public:
     bool isDetectionRunning() const;
     
     // 摄像头设置
-    bool setCameraSettings(int32_t cameraId, int32_t width, int32_t height);
+    bool setCameraSettings(const std::string& cameraId, int32_t width, int32_t height);
     
     // 测试模式设置
     void setTestMode(bool enabled, const std::string& videoPath = "");
@@ -171,7 +171,7 @@ private:
     bool alertShowing_;
     
     // 配置参数
-    int32_t cameraId_;
+    std::string cameraId_;
     int32_t cameraWidth_;
     int32_t cameraHeight_;
     int32_t captureInterval_;

@@ -189,7 +189,8 @@ typedef NS_ENUM(NSInteger, PADetectErrorCode) {
     @autoreleasepool {
         NSArray<AVCaptureDevice *> *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
         
-        for (AVCaptureDevice *device in devices) {
+        for (NSUInteger i = 0; i < devices.count; i++) {
+            AVCaptureDevice *device = devices[i];
             [cameraNames addObject:device.localizedName];
         }
         
@@ -202,7 +203,32 @@ typedef NS_ENUM(NSInteger, PADetectErrorCode) {
     return [cameraNames copy];
 }
 
-- (BOOL)setCameraId:(int32_t)cameraId
+- (NSArray<NSString *> *)getAvailableCameraIds {
+    NSMutableArray<NSString *> *cameraIds = [NSMutableArray array];
+    
+    @autoreleasepool {
+        // 使用更现代的AVCaptureDeviceDiscoverySession API
+        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
+            discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera]
+            mediaType:AVMediaTypeVideo
+            position:AVCaptureDevicePositionUnspecified];
+        NSArray<AVCaptureDevice *> *devices = discoverySession.devices;
+        
+        for (AVCaptureDevice *device in devices) {
+            // 使用AVCaptureDevice的uniqueID作为全局唯一标识符
+            [cameraIds addObject:device.uniqueID];
+        }
+        
+        // 如果没有找到摄像头，添加默认ID
+        if (cameraIds.count == 0) {
+            [cameraIds addObject:@"default_camera"];
+        }
+    }
+    
+    return [cameraIds copy];
+}
+
+- (BOOL)setCameraId:(NSString *)cameraId
               width:(int32_t)width
              height:(int32_t)height
               error:(NSError **)error {
@@ -216,7 +242,27 @@ typedef NS_ENUM(NSInteger, PADetectErrorCode) {
         return NO;
     }
     
-    bool success = _core->setCameraSettings(cameraId, width, height);
+    // 将uniqueID转换为对应的索引
+    int32_t cameraIndex = -1;
+    @autoreleasepool {
+        NSArray<AVCaptureDevice *> *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+        for (NSUInteger i = 0; i < devices.count; i++) {
+            AVCaptureDevice *device = devices[i];
+            if ([device.uniqueID isEqualToString:cameraId]) {
+                cameraIndex = (int32_t)i;
+                break;
+            }
+        }
+    }
+    
+    // 如果没有找到对应的设备，使用默认值0
+    if (cameraIndex == -1) {
+        NSLog(@"Camera with uniqueID %@ not found, using default camera index 0", cameraId);
+        cameraIndex = 0;
+    }
+    
+    std::string cameraIdStr = [cameraId UTF8String];
+    bool success = _core->setCameraSettings(cameraIdStr, width, height);
     
     if (!success && error) {
         *error = [NSError errorWithDomain:PADetectErrorDomain

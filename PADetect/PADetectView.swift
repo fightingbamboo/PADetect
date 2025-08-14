@@ -15,6 +15,7 @@ struct PADetectView: View {
     @State private var alertMessage = ""
     @State private var cameraSettings = PADetectManager.CameraSettings()
     @State private var availableCameras: [String] = []
+    @State private var availableCameraIds: [String] = []
     @State private var selectedCameraIndex = 0
     @State private var showingPermissionAlert = false
     
@@ -556,8 +557,10 @@ struct PADetectView: View {
     
     private func refreshCameraList() {
         availableCameras = detectManager.getAvailableCameras()
+        availableCameraIds = detectManager.getAvailableCameraIds()
         if availableCameras.isEmpty {
             availableCameras = ["No Camera Found"]
+            availableCameraIds = ["default_camera"]
         }
         // 确保选中的索引有效
         if selectedCameraIndex >= availableCameras.count {
@@ -567,10 +570,17 @@ struct PADetectView: View {
     
     private func applyCameraSettings() {
         do {
-            // 使用选中的摄像头索引
-            cameraSettings.cameraId = Int32(selectedCameraIndex)
+            // 根据选中的摄像头索引获取对应的摄像头uniqueID
+            guard selectedCameraIndex < availableCameraIds.count else {
+                alertMessage = "无效的摄像头选择"
+                showingAlert = true
+                return
+            }
+            
+            let cameraId = availableCameraIds[selectedCameraIndex]
+            cameraSettings.cameraId = cameraId
             try detectManager.setCameraSettings(cameraSettings)
-            alertMessage = "摄像头设置已应用: \(availableCameras[selectedCameraIndex])"
+            alertMessage = "摄像头设置已应用: \(availableCameras[selectedCameraIndex]) (ID: \(cameraId))"
             showingAlert = true
         } catch {
             alertMessage = "设置摄像头失败: \(error.localizedDescription)"

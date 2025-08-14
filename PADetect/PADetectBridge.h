@@ -64,7 +64,8 @@ typedef void(^PAStatusCallback)(PADetectionStatus status, NSString * _Nullable e
 
 // 摄像头设置
 - (NSArray<NSString *> *)getAvailableCameras;
-- (BOOL)setCameraId:(int32_t)cameraId
+- (NSArray<NSString *> *)getAvailableCameraIds;
+- (BOOL)setCameraId:(NSString *)cameraId
               width:(int32_t)width
              height:(int32_t)height
               error:(NSError **)error;

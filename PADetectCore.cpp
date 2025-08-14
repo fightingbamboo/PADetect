@@ -46,7 +46,7 @@ PADetectCore::PADetectCore()
     , status_(DetectionStatus::Stopped)
     , isInitialized_(false)
     , alertShowing_(false)
-    , cameraId_(0)
+    , cameraId_("default_camera")
     , cameraWidth_(640)
     , cameraHeight_(480)
     , captureInterval_(300)
@@ -232,7 +232,7 @@ bool PADetectCore::isDetectionRunning() const {
     return status_ == DetectionStatus::Running;
 }
 
-bool PADetectCore::setCameraSettings(int32_t cameraId, int32_t width, int32_t height) {
+bool PADetectCore::setCameraSettings(const std::string& cameraId, int32_t width, int32_t height) {
     if (status_ == DetectionStatus::Running) {
         return false; // 不能在运行时修改摄像头设置
     }
@@ -729,9 +729,10 @@ extern "C" {
         return core->isDetectionRunning();
     }
     
-    bool PADetectCore_setCameraSettings(PADetectCore* core, int cameraId, int width, int height) {
+    bool PADetectCore_setCameraSettings(PADetectCore* core, const char* cameraId, int width, int height) {
         if (!core) return false;
-        return core->setCameraSettings(cameraId, width, height);
+        std::string cameraIdStr = cameraId ? cameraId : "default_camera";
+        return core->setCameraSettings(cameraIdStr, width, height);
     }
     
     void PADetectCore_setTestMode(PADetectCore* core, bool enabled, const char* videoPath) {

@@ -18,6 +18,7 @@
 #include "CommonUtils.h"
 #include "MNNDetector.h"
 #include "PADetectCore.h"
+#import "PADetect/PADetectBridge.h"
 
 #include <chrono>
 #include <memory>
@@ -70,62 +71,45 @@ std::string getDateStr() {
     return oss.str();
 }
 
-// Function to get camera device names (macOS only)
-std::vector<std::string> getCameraDeviceNames(std::vector<int>& deviceIDs) {
+// Function to get camera device names and uniqueIDs (macOS only)
+// 使用PADetectBridge统一的摄像头枚举实现
+std::vector<std::string> getCameraDeviceNames(std::vector<std::string>& deviceUniqueIDs) {
     std::vector<std::string> deviceNames;
     
-    // macOS implementation using AVFoundation
-    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
-        discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera]
-        mediaType:AVMediaTypeVideo
-        position:AVCaptureDevicePositionUnspecified];
-    NSArray<AVCaptureDevice *> *devices = discoverySession.devices;
-    for (NSUInteger i = 0; i < devices.count; i++) {
-        AVCaptureDevice *device = devices[i];
-        std::string deviceName = [device.localizedName UTF8String];
-        deviceNames.push_back(deviceName);
-        deviceIDs.push_back((int)i);
+    @autoreleasepool {
+        // 使用PADetectBridge的统一实现
+        PADetectBridge *bridge = [PADetectBridge sharedInstance];
+        NSArray<NSString *> *cameraIds = [bridge getAvailableCameraIds];
+        NSArray<NSString *> *cameraNames = [bridge getAvailableCameras];
+        
+        // 转换为C++容器
+        for (NSUInteger i = 0; i < cameraIds.count && i < cameraNames.count; i++) {
+            std::string uniqueID = [cameraIds[i] UTF8String];
+            std::string deviceName = [cameraNames[i] UTF8String];
+            deviceUniqueIDs.push_back(uniqueID);
+            deviceNames.push_back(deviceName);
+        }
     }
 
     return deviceNames;
 }
 
-// Determine if the device name corresponds to a built-in camera
-bool IsBuiltInCamera(const std::string& deviceName) {
-    static const std::vector<std::string> builtInKeywords = {
-        "integrated", "built-in", "internal", "builtin", "内建"
-    };
 
-    std::string lowerDeviceName = CommonUtils::string2Lower(deviceName);
-    for (const auto& keyword : builtInKeywords) {
-        if (lowerDeviceName.find(keyword) != std::string::npos) {
-            return true;
-        }
-    }
-    return false;
-}
-
-ImageProcessor::ImageProcessor() {
-    MY_SPDLOG_DEBUG(">>>");
-}
 
 ImageProcessor::ImageProcessor(
     int32_t capInterval,
-    int32_t cameraId,
+    const std::string& cameraId,
     int32_t cameraWidth,
     int32_t cameraHeight) :
     m_capInterval(capInterval),
     m_cameraId(cameraId),
     m_cameraWidth(cameraWidth),
     m_cameraHeight(cameraHeight) {
-    MY_SPDLOG_DEBUG(">>>");
-#if PLATFORM_WINDOWS
-    m_hAlertEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-#endif
+    MY_SPDLOG_DEBUG(">>>ImageProcessor实例创建");
 }
 
 ImageProcessor::~ImageProcessor() {
-    MY_SPDLOG_DEBUG("<<<");
+    MY_SPDLOG_DEBUG("<<<ImageProcessor实例销毁");
 }
 
 void ImageProcessor::prepare() {
@@ -509,49 +493,57 @@ bool ImageProcessor::openCameraUntilTrue() {
     
     // 枚举可用的摄像头设备
     MY_SPDLOG_INFO("Enumerating available camera devices...");
-    std::vector<int32_t> availableDevices;
+    std::vector<std::string> deviceUniqueIDs;
+    std::vector<std::string> deviceNames = getCameraDeviceNames(deviceUniqueIDs);
     
-    // 使用系统API枚举设备
-    NSArray<AVCaptureDevice *> *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-    MY_SPDLOG_INFO("System detected {} camera devices:", devices.count);
-    for (NSUInteger i = 0; i < devices.count; i++) {
-        AVCaptureDevice *device = devices[i];
-        MY_SPDLOG_INFO("  Device {}: {} ({})", i, [device.localizedName UTF8String], [device.uniqueID UTF8String]);
-        availableDevices.push_back((int32_t)i);
+    MY_SPDLOG_INFO("System detected {} camera devices:", deviceNames.size());
+    for (size_t i = 0; i < deviceNames.size(); i++) {
+        MY_SPDLOG_INFO("  Device {}: {} (uniqueID: {})", i, deviceNames[i], deviceUniqueIDs[i]);
     }
     
-    MY_SPDLOG_INFO("Total available camera devices: {}", availableDevices.size());
+    MY_SPDLOG_INFO("Total available camera devices: {}", deviceNames.size());
     
-    if (availableDevices.empty()) {
+    if (deviceUniqueIDs.empty()) {
         MY_SPDLOG_ERROR("No camera devices found! This may indicate a permission or hardware issue.");
         return false;
     }
     
-    // 如果指定的设备ID不在可用列表中，使用第一个可用设备
-    if (std::find(availableDevices.begin(), availableDevices.end(), m_cameraId) == availableDevices.end()) {
-        MY_SPDLOG_WARN("Requested camera ID {} not available, using device ID {}", m_cameraId, availableDevices[0]);
-        m_cameraId = availableDevices[0];
+    // 查找指定的摄像头uniqueID
+    int32_t deviceIndex = 0; // 默认使用第一个设备
+    bool foundDevice = false;
+    
+    for (size_t i = 0; i < deviceUniqueIDs.size(); i++) {
+        if (deviceUniqueIDs[i] == m_cameraId) {
+            deviceIndex = static_cast<int32_t>(i);
+            foundDevice = true;
+            MY_SPDLOG_INFO("Found camera with uniqueID: {} at index: {}", m_cameraId, deviceIndex);
+            break;
+        }
     }
     
-    MY_SPDLOG_INFO("Using camera device ID: {}", m_cameraId);
+    if (!foundDevice) {
+        MY_SPDLOG_WARN("Requested camera uniqueID {} not found, using default device index: {}", m_cameraId, deviceIndex);
+    }
+    
+    MY_SPDLOG_INFO("Using camera device index: {} for uniqueID: {}", deviceIndex, m_cameraId);
 #endif
 
     while (true) {
         if (m_cap) { m_cap.reset(); }
         auto beforeTime = std::chrono::steady_clock::now();
-        MY_SPDLOG_ERROR("device: {} try open camera", m_cameraId);
-        m_cap.reset(new cv::VideoCapture(m_cameraId, cv::CAP_AVFOUNDATION));
+        MY_SPDLOG_ERROR("device index: {} (uniqueID: {}) try open camera", deviceIndex, m_cameraId);
+        m_cap.reset(new cv::VideoCapture(deviceIndex, cv::CAP_AVFOUNDATION));
         if (m_cap->isOpened()) {
             m_cap->set(cv::CAP_PROP_FRAME_WIDTH, m_cameraWidth);
             m_cap->set(cv::CAP_PROP_FRAME_HEIGHT, m_cameraHeight);
             auto afterTime = std::chrono::steady_clock::now();
             double duration_millsecond = std::chrono::duration<double, std::milli>(afterTime - beforeTime).count();
-            MY_SPDLOG_ERROR("device: {} open success, spend: {} ms", m_cameraId, duration_millsecond);
+            MY_SPDLOG_ERROR("device index: {} (uniqueID: {}) open success, spend: {} ms", deviceIndex, m_cameraId, duration_millsecond);
             return true;
         }
 
         // 摄像头打开失败，记录详细错误信息
-        MY_SPDLOG_ERROR("Failed to open camera device: {} after permission check and device enumeration", m_cameraId);
+        MY_SPDLOG_ERROR("Failed to open camera device index: {} (uniqueID: {}) after permission check and device enumeration", deviceIndex, m_cameraId);
         MY_SPDLOG_ERROR("This may indicate a hardware issue or the camera is being used by another application");
         
         // open camera failed - AlertWindowManager已删除，改用简单常量

@@ -52,11 +52,11 @@ public class PADetectManager: ObservableObject {
     }
     
     public struct CameraSettings {
-        public var cameraId: Int32
+        public var cameraId: String
         public var width: Int32
         public var height: Int32
         
-        public init(cameraId: Int32 = 0, width: Int32 = 640, height: Int32 = 480) {
+        public init(cameraId: String = "default_camera", width: Int32 = 640, height: Int32 = 480) {
             self.cameraId = cameraId
             self.width = width
             self.height = height
@@ -201,6 +201,11 @@ public class PADetectManager: ObservableObject {
         return bridge.getAvailableCameras()
     }
     
+    /// 获取可用摄像头ID列表
+    public func getAvailableCameraIds() -> [String] {
+        return bridge.getAvailableCameraIds()
+    }
+    
     /// 设置摄像头参数
     public func setCameraSettings(_ settings: CameraSettings) throws {
         try bridge.setCameraId(
@@ -208,6 +213,15 @@ public class PADetectManager: ObservableObject {
             width: settings.width,
             height: settings.height
         )
+    }
+    
+    /// 根据摄像头索引获取对应的摄像头ID
+    public func getCameraId(for index: Int) -> String? {
+        let cameraIds = getAvailableCameraIds()
+        guard index >= 0 && index < cameraIds.count else {
+            return nil
+        }
+        return cameraIds[index]
     }
     
     /// 重置检测结果
